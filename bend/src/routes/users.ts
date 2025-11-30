@@ -1,119 +1,159 @@
-import { Router, type Request, type Response } from "express"
+import { Router } from "express"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { z } from "zod"
-import { PrismaClient } from "@prisma/client"
+import prisma from "../prisma"
+import dotenv from "dotenv"
+import { authMiddleware, AuthRequest } from "../middleware/auth"
+
+dotenv.config()
 
 const router = Router()
-const prisma = new PrismaClient()
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret"
 
 // Validation schemas
 const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  name: z.string().min(2),
-  age: z.number().optional(),
+  name: z.string().optional()
 })
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string(),
+  password: z.string().min(6)
 })
 
-// Sign up
-router.post("/signup", async (req: Request, res: Response) => {
+// POST /api/users/signup
+router.post("/signup", async (req, res) => {
   try {
-    const { email, password, name, age } = signupSchema.parse(req.body)
+    const data = signupSchema.parse(req.body)
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({ where: { email } })
-    if (existingUser) {
-      return res.status(400).json({ error: "User already exists" })
+    const existing = await prisma.user.findUnique({
+      where: { email: data.email }
+    })
+    if (existing) {
+      return res.status(400).json({ message: "Email already in use" })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    // Create user
+    const hashed = await bcrypt.hash(data.password, 10)
     const user = await prisma.user.create({
       data: {
-        email,
-        password: hashedPassword,
-        name,
-        age,
-      },
+        email: data.email,
+        password: hashed,
+        name: data.name
+      }
     })
 
-    // Generate token
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || "secret", {
-      expiresIn: "7d",
-    })
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    )
 
-    res.status(201).json({ user: { id: user.id, email, name }, token })
-  } catch (error) {
-    res.status(400).json({ error: "Signup failed" })
+    res.status(201).json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Login
-router.post("/login", async (req: Request, res: Response) => {
+// POST /api/users/login
+router.post("/login", async (req, res) => {
   try {
-    const { email, password } = loginSchema.parse(req.body)
+    const data = loginSchema.parse(req.body)
 
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" })
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password)
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid credentials" })
-    }
-
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || "secret", {
-      expiresIn: "7d",
+    const user = await prisma.user.findUnique({
+      where: { email: data.email }
     })
 
-    res.json({ user: { id: user.id, email, name: user.name }, token })
-  } catch (error) {
-    res.status(400).json({ error: "Login failed" })
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email or password" })
+    }
+
+    const isValid = await bcrypt.compare(data.password, user.password)
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid email or password" })
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    )
+
+    res.json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Get user profile
-router.get("/profile/:userId", async (req: Request, res: Response) => {
+// GET /api/users/profile/:userId
+router.get("/profile/:userId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
+
+    // Optional: only allow owner (or admin)
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, age: true, createdAt: true },
+      select: { id: true, email: true, name: true, role: true, createdAt: true }
     })
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" })
-    }
+    if (!user) return res.status(404).json({ message: "User not found" })
 
     res.json(user)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch profile" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Update user profile
-router.put("/profile/:userId", async (req: Request, res: Response) => {
+// PUT /api/users/profile/:userId
+router.put("/profile/:userId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
-    const { name, age } = req.body
+    const bodySchema = z.object({
+      name: z.string().optional()
+    })
+    const data = bodySchema.parse(req.body)
 
-    const user = await prisma.user.update({
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    const updated = await prisma.user.update({
       where: { id: userId },
-      data: { name, age },
-      select: { id: true, email: true, name: true, age: true },
+      data: { name: data.name }
     })
 
-    res.json(user)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update profile" })
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      name: updated.name,
+      role: updated.role
+    })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 

@@ -1,125 +1,168 @@
-import { Router, type Request, type Response } from "express"
+import { Router } from "express"
 import { z } from "zod"
-import { PrismaClient } from "@prisma/client"
+import prisma from "../prisma"
+import { authMiddleware, AuthRequest } from "../middleware/auth"
 
 const router = Router()
-const prisma = new PrismaClient()
 
-// Validation schema
 const periodLogSchema = z.object({
-  userId: z.string(),
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime().optional(),
-  flowIntensity: z.enum(["light", "moderate", "heavy"]).optional(),
-  symptoms: z.array(z.string()).optional(),
-  notes: z.string().optional(),
+  userId: z.string().cuid(),
+  startDate: z.string().datetime().or(z.string()), // frontend may send ISO string
+  endDate: z.string().datetime().or(z.string()).optional(),
+  flowIntensity: z.string().optional(),
+  symptoms: z.string().optional(),
+  notes: z.string().optional()
 })
 
-// Log period
-router.post("/log", async (req: Request, res: Response) => {
+// POST /api/period-tracking/log
+router.post("/log", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const data = periodLogSchema.parse(req.body)
 
-    const periodLog = await prisma.periodLog.create({
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== data.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    const log = await prisma.periodLog.create({
       data: {
         userId: data.userId,
         startDate: new Date(data.startDate),
-        endDate: data.endDate ? new Date(data.endDate) : null,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
         flowIntensity: data.flowIntensity,
         symptoms: data.symptoms,
-        notes: data.notes,
-      },
+        notes: data.notes
+      }
     })
 
-    res.status(201).json(periodLog)
-  } catch (error) {
-    res.status(400).json({ error: "Failed to log period" })
+    res.status(201).json(log)
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Get period history
-router.get("/history/:userId", async (req: Request, res: Response) => {
+// GET /api/period-tracking/history/:userId
+router.get("/history/:userId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
-    const { limit = 12 } = req.query
 
-    const history = await prisma.periodLog.findMany({
-      where: { userId },
-      orderBy: { startDate: "desc" },
-      take: Number.parseInt(limit as string),
-    })
-
-    res.json(history)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch period history" })
-  }
-})
-
-// Get cycle prediction
-router.get("/prediction/:userId", async (req: Request, res: Response) => {
-  try {
-    const { userId } = req.params
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
 
     const logs = await prisma.periodLog.findMany({
       where: { userId },
-      orderBy: { startDate: "desc" },
-      take: 3,
+      orderBy: { startDate: "desc" }
+    })
+
+    res.json(logs)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
+  }
+})
+
+// Simple prediction: average cycle length
+// GET /api/period-tracking/prediction/:userId
+router.get("/prediction/:userId", authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { userId } = req.params
+
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    const logs = await prisma.periodLog.findMany({
+      where: { userId },
+      orderBy: { startDate: "asc" }
     })
 
     if (logs.length < 2) {
-      return res.json({ prediction: null, message: "Not enough data for prediction" })
+      return res.json({ message: "Not enough data to predict" })
     }
 
-    // Simple cycle prediction based on average cycle length
-    const cycleLengths = []
-    for (let i = 0; i < logs.length - 1; i++) {
-      const diff = Math.floor((logs[i].startDate.getTime() - logs[i + 1].startDate.getTime()) / (1000 * 60 * 60 * 24))
-      cycleLengths.push(diff)
+    let totalCycleDays = 0
+    let count = 0
+    for (let i = 1; i < logs.length; i++) {
+      const prev = logs[i - 1]
+      const curr = logs[i]
+      const diffMs = curr.startDate.getTime() - prev.startDate.getTime()
+      const diffDays = diffMs / (1000 * 60 * 60 * 24)
+      totalCycleDays += diffDays
+      count++
     }
 
-    const avgCycleLength = Math.round(cycleLengths.reduce((a, b) => a + b) / cycleLengths.length)
-    const nextPeriodDate = new Date(logs[0].startDate)
-    nextPeriodDate.setDate(nextPeriodDate.getDate() + avgCycleLength)
+    const avgCycleLength = Math.round(totalCycleDays / count)
+    const lastLog = logs[logs.length - 1]
+    const predictedNext = new Date(lastLog.startDate)
+    predictedNext.setDate(predictedNext.getDate() + avgCycleLength)
 
     res.json({
-      averageCycleLength: avgCycleLength,
-      nextPeriodDate,
-      daysUntilNextPeriod: Math.ceil((nextPeriodDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+      averageCycleLengthDays: avgCycleLength,
+      lastPeriodStart: lastLog.startDate,
+      predictedNextPeriod: predictedNext
     })
-  } catch (error) {
-    res.status(500).json({ error: "Failed to calculate prediction" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Update period log
-router.put("/:logId", async (req: Request, res: Response) => {
+// PUT /api/period-tracking/:logId
+router.put("/:logId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { logId } = req.params
-    const data = periodLogSchema.partial().parse(req.body)
+    const bodySchema = periodLogSchema.partial()
+    const data = bodySchema.parse(req.body)
+
+    const existing = await prisma.periodLog.findUnique({ where: { id: logId } })
+    if (!existing) return res.status(404).json({ message: "Log not found" })
+
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== existing.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
 
     const updated = await prisma.periodLog.update({
       where: { id: logId },
-      data,
+      data: {
+        startDate: data.startDate ? new Date(data.startDate) : undefined,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        flowIntensity: data.flowIntensity,
+        symptoms: data.symptoms,
+        notes: data.notes
+      }
     })
 
     res.json(updated)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update period log" })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Delete period log
-router.delete("/:logId", async (req: Request, res: Response) => {
+// DELETE /api/period-tracking/:logId
+router.delete("/:logId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { logId } = req.params
 
-    await prisma.periodLog.delete({
-      where: { id: logId },
-    })
+    const existing = await prisma.periodLog.findUnique({ where: { id: logId } })
+    if (!existing) return res.status(404).json({ message: "Log not found" })
 
-    res.json({ message: "Period log deleted" })
-  } catch (error) {
-    res.status(500).json({ error: "Failed to delete period log" })
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== existing.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    await prisma.periodLog.delete({ where: { id: logId } })
+    res.json({ message: "Deleted" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 

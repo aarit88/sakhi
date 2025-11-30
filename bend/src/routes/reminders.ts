@@ -1,87 +1,119 @@
-import { Router, type Request, type Response } from "express"
+import { Router } from "express"
 import { z } from "zod"
-import { PrismaClient } from "@prisma/client"
+import prisma from "../prisma"
+import { authMiddleware, AuthRequest } from "../middleware/auth"
 
 const router = Router()
-const prisma = new PrismaClient()
 
-// Validation schema
 const reminderSchema = z.object({
-  userId: z.string(),
-  title: z.string(),
+  userId: z.string().cuid(),
+  type: z.enum(["PERIOD", "MEDICATION", "APPOINTMENT", "CUSTOM"]),
+  title: z.string().min(3),
   description: z.string().optional(),
-  reminderType: z.enum(["period", "medication", "appointment", "custom"]),
-  scheduledTime: z.string().datetime(),
-  isActive: z.boolean().default(true),
+  remindAt: z.string() // ISO date
 })
 
-// Create reminder
-router.post("/", async (req: Request, res: Response) => {
+// POST /api/reminders
+router.post("/", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const data = reminderSchema.parse(req.body)
+
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== data.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
 
     const reminder = await prisma.reminder.create({
       data: {
         userId: data.userId,
+        type: data.type,
         title: data.title,
         description: data.description,
-        reminderType: data.reminderType,
-        scheduledTime: new Date(data.scheduledTime),
-        isActive: data.isActive,
-      },
+        remindAt: new Date(data.remindAt)
+      }
     })
 
     res.status(201).json(reminder)
-  } catch (error) {
-    res.status(400).json({ error: "Failed to create reminder" })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Get user reminders
-router.get("/:userId", async (req: Request, res: Response) => {
+// GET /api/reminders/:userId
+router.get("/:userId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
 
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
     const reminders = await prisma.reminder.findMany({
-      where: { userId, isActive: true },
-      orderBy: { scheduledTime: "asc" },
+      where: { userId },
+      orderBy: { remindAt: "asc" }
     })
 
     res.json(reminders)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch reminders" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Update reminder
-router.put("/:reminderId", async (req: Request, res: Response) => {
+// PUT /api/reminders/:reminderId
+router.put("/:reminderId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { reminderId } = req.params
-    const data = reminderSchema.partial().parse(req.body)
+    const bodySchema = reminderSchema.partial()
+    const data = bodySchema.parse(req.body)
 
-    const reminder = await prisma.reminder.update({
+    const existing = await prisma.reminder.findUnique({ where: { id: reminderId } })
+    if (!existing) return res.status(404).json({ message: "Reminder not found" })
+
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== existing.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    const updated = await prisma.reminder.update({
       where: { id: reminderId },
-      data,
+      data: {
+        type: data.type,
+        title: data.title,
+        description: data.description,
+        remindAt: data.remindAt ? new Date(data.remindAt) : undefined
+      }
     })
 
-    res.json(reminder)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update reminder" })
+    res.json(updated)
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Delete reminder
-router.delete("/:reminderId", async (req: Request, res: Response) => {
+// DELETE /api/reminders/:reminderId
+router.delete("/:reminderId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { reminderId } = req.params
 
-    await prisma.reminder.delete({
-      where: { id: reminderId },
-    })
+    const existing = await prisma.reminder.findUnique({ where: { id: reminderId } })
+    if (!existing) return res.status(404).json({ message: "Reminder not found" })
 
-    res.json({ message: "Reminder deleted" })
-  } catch (error) {
-    res.status(500).json({ error: "Failed to delete reminder" })
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== existing.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    await prisma.reminder.delete({ where: { id: reminderId } })
+    res.json({ message: "Deleted" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 

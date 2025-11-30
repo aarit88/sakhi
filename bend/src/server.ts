@@ -2,12 +2,13 @@ import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
 
-// Import routes
-import userRoutes from "./routes/users"
-import periodTrackingRoutes from "./routes/period-tracking"
-import healthWellnessRoutes from "./routes/health-wellness"
-import remindersRoutes from "./routes/reminders"
-import communityRoutes from "./routes/community"
+// Routers
+import authRouter from "./routes/auth"
+import usersRouter from "./routes/users"
+import periodTrackingRouter from "./routes/period-tracking"
+import healthWellnessRouter from "./routes/health-wellness"
+import remindersRouter from "./routes/reminders"
+import communityRouter from "./routes/community"
 
 dotenv.config()
 
@@ -19,23 +20,52 @@ app.use(cors())
 app.use(express.json())
 
 // Health check
-app.get("/api/users", (req, res) => {
-  res.json({ status: "Backend is running" })
+app.get("/", (_req, res) => {
+  res.json({ message: "Sakhi Backend API running" })
 })
 
-// Routes
-app.use("/api/users", userRoutes)
-app.use("/api/period-tracking", periodTrackingRoutes)
-app.use("/api/health-wellness", healthWellnessRoutes)
-app.use("/api/reminders", remindersRoutes)
-app.use("/api/community", communityRoutes)
+/* =======================
+   API Route Mounting
+======================= */
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack)
-  res.status(500).json({ error: "Internal Server Error" })
+// 🔹 Authentication (Signup + Login)
+app.use("/api/auth", authRouter)
+
+// 🔹 Users
+app.use("/api/users", usersRouter)
+
+// 🔹 Period Tracking
+app.use("/api/period-tracking", periodTrackingRouter)
+
+// 🔹 Health & Wellness
+app.use("/api/health-wellness", healthWellnessRouter)
+
+// 🔹 Reminders
+app.use("/api/reminders", remindersRouter)
+
+// 🔹 Community
+app.use("/api/community", communityRouter)
+
+/* =======================
+   404 Handler
+======================= */
+app.use((_req, res) => {
+  res.status(404).json({ message: "Route not found" })
 })
 
+/* =======================
+   Global Error Handler
+======================= */
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Unexpected error:", err)
+  res.status(500).json({ message: "Internal server error" })
+})
+
+/* =======================
+   Start Server
+======================= */
 app.listen(PORT, () => {
-  console.log(`🚀 Sakhi Backend running on http://localhost:${PORT}`)
+  console.log(`Sakhi backend running on http://localhost:${PORT}`)
 })
+
+export default app

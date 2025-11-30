@@ -1,113 +1,127 @@
-import { Router, type Request, type Response } from "express"
+import { Router } from "express"
 import { z } from "zod"
-import { PrismaClient } from "@prisma/client"
+import prisma from "../prisma"
+import { authMiddleware, AuthRequest } from "../middleware/auth"
 
 const router = Router()
-const prisma = new PrismaClient()
 
-// Validation schemas
 const postSchema = z.object({
-  userId: z.string(),
-  title: z.string(),
-  content: z.string(),
-  category: z.enum(["discussion", "question", "experience", "support"]),
+  title: z.string().min(3),
+  content: z.string().min(10),
+  category: z.string().optional()
 })
 
 const commentSchema = z.object({
-  userId: z.string(),
-  postId: z.string(),
-  content: z.string(),
+  postId: z.string().cuid(),
+  content: z.string().min(1)
 })
 
-// Create community post
-router.post("/posts", async (req: Request, res: Response) => {
+// POST /api/community/posts
+router.post("/posts", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const data = postSchema.parse(req.body)
 
     const post = await prisma.communityPost.create({
       data: {
-        userId: data.userId,
+        userId: req.user!.userId,
         title: data.title,
         content: data.content,
-        category: data.category,
-      },
+        category: data.category
+      }
     })
 
     res.status(201).json(post)
-  } catch (error) {
-    res.status(400).json({ error: "Failed to create post" })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Get all community posts
-router.get("/posts", async (req: Request, res: Response) => {
+// GET /api/community/posts
+router.get("/posts", async (_req, res) => {
   try {
-    const { category, limit = 20 } = req.query
-
     const posts = await prisma.communityPost.findMany({
-      where: category ? { category: category as string } : {},
       orderBy: { createdAt: "desc" },
-      take: Number.parseInt(limit as string),
-      include: { _count: { select: { comments: true } } },
+      include: {
+        comments: {
+          orderBy: { createdAt: "asc" }
+        }
+      }
     })
-
     res.json(posts)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch posts" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Get single post with comments
-router.get("/posts/:postId", async (req: Request, res: Response) => {
+// GET /api/community/posts/:postId
+router.get("/posts/:postId", async (req, res) => {
   try {
     const { postId } = req.params
-
     const post = await prisma.communityPost.findUnique({
       where: { id: postId },
-      include: { comments: { orderBy: { createdAt: "desc" } } },
+      include: {
+        comments: {
+          orderBy: { createdAt: "asc" }
+        }
+      }
     })
 
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" })
-    }
-
+    if (!post) return res.status(404).json({ message: "Post not found" })
     res.json(post)
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch post" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Add comment to post
-router.post("/comments", async (req: Request, res: Response) => {
+// POST /api/community/comments
+router.post("/comments", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const data = commentSchema.parse(req.body)
 
     const comment = await prisma.comment.create({
       data: {
-        userId: data.userId,
         postId: data.postId,
-        content: data.content,
-      },
+        userId: req.user!.userId,
+        content: data.content
+      }
     })
 
     res.status(201).json(comment)
-  } catch (error) {
-    res.status(400).json({ error: "Failed to add comment" })
+  } catch (err: any) {
+    if (err.name === "ZodError") {
+      return res.status(400).json({ message: "Invalid data", errors: err.errors })
+    }
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
-// Delete post
-router.delete("/posts/:postId", async (req: Request, res: Response) => {
+// DELETE /api/community/posts/:postId
+router.delete("/posts/:postId", authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { postId } = req.params
 
-    await prisma.communityPost.delete({
-      where: { id: postId },
-    })
+    const post = await prisma.communityPost.findUnique({ where: { id: postId } })
+    if (!post) return res.status(404).json({ message: "Post not found" })
 
-    res.json({ message: "Post deleted" })
-  } catch (error) {
-    res.status(500).json({ error: "Failed to delete post" })
+    // allow author or admin to delete
+    if (req.user?.role !== "ADMIN" && req.user?.userId !== post.userId) {
+      return res.status(403).json({ message: "Forbidden" })
+    }
+
+    await prisma.comment.deleteMany({ where: { postId } })
+    await prisma.communityPost.delete({ where: { id: postId } })
+
+    res.json({ message: "Deleted" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
   }
 })
 
