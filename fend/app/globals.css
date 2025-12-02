@@ -1,0 +1,258 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Removed unsupported @custom-variant dark (&:is(.dark *)); */
+
+:root {
+  /* Updated color palette for SAKHI health platform */
+  --background: oklch(1 0 0); /* Pure white */
+  --foreground: oklch(0.35 0 0); /* Dark slate gray */
+  --card: oklch(0.98 0 0); /* Light gray card background */
+  --card-foreground: oklch(0.35 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.35 0 0);
+  --primary: oklch(0.45 0.15 160); /* Emerald-600 equivalent */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.55 0.12 165); /* Vibrant teal */
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.55 0.12 165); /* Accent teal */
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.22 35); /* Orange for warnings */
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.96 0 0);
+  --ring: oklch(0.45 0.15 160);
+  /* Updated chart colors for health data visualization */
+  --chart-1: oklch(0.55 0.12 165); /* Teal */
+  --chart-2: oklch(0.5 0.15 200); /* Blue */
+  --chart-3: oklch(0.55 0.22 35); /* Orange */
+  --chart-4: oklch(0.45 0.15 160); /* Emerald */
+  --chart-5: oklch(0.4 0 0); /* Gray */
+  --radius: 0.5rem;
+  --sidebar: oklch(0.96 0 0);
+  --sidebar-foreground: oklch(0.35 0 0);
+  --sidebar-primary: oklch(0.45 0.15 160);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.55 0.12 165);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.45 0.15 160);
+}
+
+.dark {
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.12 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.08 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.6 0.15 160);
+  --primary-foreground: oklch(0.08 0 0);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.15 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.2 0 0);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.5 0.22 35);
+  --destructive-foreground: oklch(0.95 0 0);
+  --border: oklch(0.2 0 0);
+  --input: oklch(0.2 0 0);
+  --ring: oklch(0.6 0.15 160);
+  --chart-1: oklch(0.6 0.15 160);
+  --chart-2: oklch(0.65 0.15 200);
+  --chart-3: oklch(0.6 0.22 35);
+  --chart-4: oklch(0.55 0.12 165);
+  --chart-5: oklch(0.6 0 0);
+  --sidebar: oklch(0.12 0 0);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.6 0.15 160);
+  --sidebar-primary-foreground: oklch(0.08 0 0);
+  --sidebar-accent: oklch(0.2 0 0);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.2 0 0);
+  --sidebar-ring: oklch(0.6 0.15 160);
+}
+
+:root {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+/* --- Added Keyframes for Floating Bubble Fix --- */
+@keyframes float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.1;
+  }
+  50% {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.1;
+  }
+}
+
+.animate-float {
+  /* Animation duration is set via inline style in FloatingBubble component */
+  animation-name: float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+/* === SAKHI hero animations (slow & smooth) === */
+
+.sakhi-title {
+  position: relative;
+  display: inline-block;
+}
+
+/* Full-screen intro word */
+.sakhi-title-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Pacifico", "Brush Script MT", cursive;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-size: clamp(3.5rem, 14vw, 7.5rem);
+  background: radial-gradient(circle at top, #ffe4f1 0, transparent 55%),
+              radial-gradient(circle at bottom, #ffd1e6 0, transparent 55%);
+  color: transparent;
+  -webkit-text-stroke: 2px #ff3e88;
+  text-shadow:
+    0 0 18px rgba(255, 92, 163, 0.5),
+    0 0 40px rgba(255, 92, 163, 0.4);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  animation: sakhi-fullscreen 7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* Inline final “SAKHI” in the hero heading */
+.sakhi-title-main {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff007f, #ff4b2b, #ff7a9b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px rgba(255, 101, 170, 0.35);
+  animation: sakhi-main-in 7s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+/* Fullscreen cursive animation (slow fade + float) */
+@keyframes sakhi-fullscreen {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(30px);
+    filter: blur(10px);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.06) translateY(-6px);
+  }
+  60% {
+    opacity: 0.85;
+    transform: scale(1.02) translateY(0);
+  }
+  78% {
+    opacity: 0.4;
+    transform: scale(1.15) translateY(10px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25) translateY(14px);
+    filter: blur(6px);
+  }
+}
+
+/* Final word easing gently into its position */
+@keyframes sakhi-main-in {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(10px);
+  }
+  /* stay hidden while fullscreen text plays */
+  52% {
+    opacity: 0;
+    transform: translateY(40px);
+    filter: blur(10px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  85% {
+    transform: translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}

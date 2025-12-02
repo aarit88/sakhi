@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ReminderType {
+  PERIOD
+  MEDICATION
+  APPOINTMENT
+  CUSTOM
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+
+  periodLogs PeriodLog[]
+  reminders  Reminder[]
+  posts      CommunityPost[]
+  comments   Comment[]
+}
+
+model PeriodLog {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  startDate    DateTime
+  endDate      DateTime?
+  flowIntensity String? // e.g. "light", "medium", "heavy"
+  symptoms     String?  // comma-separated or JSON string
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Article {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String?
+  isPublished Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tip {
+  id        String   @id @default(cuid())
+  text      String
+  category  String?
+  createdAt DateTime @default(now())
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  category  String?
+  createdAt DateTime @default(now())
+}
+
+model Reminder {
+  id          String       @id @default(cuid())
+  user        User         @relation(fields: [userId], references: [id])
+  userId      String
+  type        ReminderType
+  title       String
+  description String?
+  remindAt    DateTime
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model CommunityPost {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  title     String
+  content   String
+  category  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  comments  Comment[]
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  post      CommunityPost @relation(fields: [postId], references: [id])
+  postId    String
+  user      User          @relation(fields: [userId], references: [id])
+  userId    String
+  content   String
+  createdAt DateTime      @default(now())
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+}
