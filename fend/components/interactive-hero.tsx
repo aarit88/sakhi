@@ -163,12 +163,12 @@ export function InteractiveHero() {
     // this is your main hero / “home” section
     <section
       id="home"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-b from-pink-50 via-rose-50 to-white pt-24"
     >
       {/* Background decorative layer */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Soft gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-50 via-rose-50 to-white opacity-70" />
+        <div className="absolute inset-0 bg-linear-to-br from-pink-50 via-rose-50 to-white opacity-70" />
 
         {/* Floating particles */}
         {particles.map((particle, index) => (
@@ -186,7 +186,7 @@ export function InteractiveHero() {
 
         {/* Gradient orbs with parallax */}
         <div
-          className="absolute w-96 h-96 bg-gradient-to-r from-pink-400/20 to-rose-400/20 rounded-full blur-3xl animate-pulse"
+          className="absolute w-96 h-96 bg-linear-to-r from-pink-400/20 to-rose-400/20 rounded-full blur-3xl animate-pulse"
           style={{
             transform: parallaxTransform(0.02, 0.02),
             left: "10%",
@@ -194,7 +194,7 @@ export function InteractiveHero() {
           }}
         />
         <div
-          className="absolute w-80 h-80 bg-gradient-to-r from-purple-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"
+          className="absolute w-80 h-80 bg-linear-to-r from-purple-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"
           style={{
             transform: parallaxTransform(-0.01, -0.01),
             right: "10%",
@@ -218,7 +218,7 @@ export function InteractiveHero() {
               {/* SAKHI title with original fancy animation */}
               <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight">
                 Meet <span className="text-pink-500">SAKHI</span>{" "}
-                <span className="sakhi-title-animated sakhi-title-gradient bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 bg-clip-text text-transparent animate-shimmer sakhi-title-overlay">
+                <span className="sakhi-title-animated sakhi-title-gradient bg-linear-to-r from-pink-500 via-rose-500 to-pink-600 bg-clip-text text-transparent animate-shimmer sakhi-title-overlay">
                   SAKHI
                 </span>
               </h1>
@@ -238,7 +238,7 @@ export function InteractiveHero() {
               >
                 <div className="flex items-center space-x-4 mb-4">
                   <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${currentFeatureData.color} flex items-center justify-center animate-pulse-glow`}
+                    className={`w-12 h-12 rounded-xl bg-linear-to-br ${currentFeatureData.color} flex items-center justify-center animate-pulse-glow`}
                   >
                     <IconComponent className="w-6 h-6 text-white" />
                   </div>
@@ -271,7 +271,7 @@ export function InteractiveHero() {
               {/* ✅ Redirects to /subscription */}
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 btn-animate group"
+                className="bg-linear-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 btn-animate group"
                 onClick={() => router.push("/subscription")}
               >
                 <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
@@ -319,9 +319,9 @@ export function InteractiveHero() {
 
           {/* Right Content - Interactive Device Visualization */}
           <div className="relative animate-slide-in-right">
-            <div className="relative w-full h-96 lg:h-[500px]">
+            <div className="relative w-full h-96 lg:h-125">
               {/* Central hub */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full flex items-center justify-center animate-pulse-glow">
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-linear-to-br from-pink-400 to-rose-500 rounded-full flex items-center justify-center animate-pulse-glow">
                 <Heart className="w-12 h-12 text-white animate-bounce-gentle" />
               </div>
 
@@ -369,7 +369,7 @@ export function InteractiveHero() {
                       hoveredDevice === index ? "scale-110 border-pink-400 shadow-xl" : ""
                     }`}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full animate-pulse" />
+                    <div className="w-8 h-8 bg-linear-to-br from-pink-400 to-rose-500 rounded-full animate-pulse" />
                   </div>
 
                   {/* Device info tooltip */}
@@ -426,7 +426,7 @@ export function InteractiveHero() {
       {/* 🔹 Anonymous chat window (opens when avatar clicked) */}
       {isAnonChatOpen && (
         <div className="fixed bottom-24 right-4 z-50 w-80 max-w-[90vw] bg-white border border-pink-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-          <div className="bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-3 flex items-center justify-between">
+          <div className="bg-linear-to-r from-pink-500 to-rose-500 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                 <MessageCircle className="w-4 h-4 text-white" />

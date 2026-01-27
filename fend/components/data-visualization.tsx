@@ -75,7 +75,7 @@ export function DataVisualization() {
         <div className="text-center mb-16 animate-slide-up">
           <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
             Visual{" "}
-            <span className="bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
               Health Analytics
             </span>
           </h2>

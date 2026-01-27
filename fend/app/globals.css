@@ -1,7 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-
-/* Removed unsupported @custom-variant dark (&:is(.dark *)); */
+/* Removed unsupported @custom-variant dark (&:is(.dark *)); */    
 
 :root {
   /* Updated color palette for SAKHI health platform */
