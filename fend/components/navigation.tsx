@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Menu, X, Heart, Dumbbell, Utensils, Activity, Sparkles, Home } from "lucide-react"
-import { useMagneticEffect } from "@/lib/hooks/use-advanced-animations"
+import { useMagneticEffect } from "@/hooks/use-advanced-animations"
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
