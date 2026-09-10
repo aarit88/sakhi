@@ -1,0 +1,14 @@
+{
+  "name": "sakhi-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "fend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=fend",
+    "build": "npm run build --workspace=fend",
+    "start": "npm run start --workspace=fend",
+    "lint": "npm run lint --workspace=fend"
+  }
+}

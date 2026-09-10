@@ -1,161 +1,94 @@
-"use client"
-
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Heart, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, ArrowRight } from "lucide-react"
+import React from "react"
+import Link from "next/link"
+import { Heart, ShieldCheck, Mail, Phone, ExternalLink } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-20">
+    <footer className="border-t border-pink-100 bg-white/80 backdrop-blur-md pt-12 pb-8 text-slate-600">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Newsletter Section */}
-        <Card className="bg-gradient-to-r from-pink-500 to-rose-500 border-0 mb-16 animate-slide-up">
-          <div className="p-8 md:p-12 text-center">
-            <h3 className="text-3xl font-bold text-white mb-4">Stay Connected with SAKHI</h3>
-            <p className="text-pink-100 mb-8 max-w-2xl mx-auto">
-              Get personalized health insights, device updates, and wellness tips delivered to your inbox.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <Input
-                placeholder="Enter your email"
-                className="bg-white/20 border-white/30 text-white placeholder:text-pink-100"
-              />
-              <Button className="bg-white text-pink-600 hover:bg-pink-50">
-                Subscribe
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        <div className="grid lg:grid-cols-4 gap-12">
-          {/* Brand Section */}
-          <div className="lg:col-span-1 animate-slide-up">
-            <div className="flex items-center space-x-2 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl flex items-center justify-center">
-                <Heart className="w-6 h-6 text-white" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+          {/* Brand Col */}
+          <div className="space-y-4 md:col-span-1">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white shadow-md">
+                <Heart className="w-4 h-4 fill-white" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">
+              <span className="font-bold text-xl bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
                 SAKHI
               </span>
             </div>
-            <p className="text-gray-300 mb-6 leading-relaxed">
-              Empowering women's health through intelligent IoT technology and personalized wellness insights.
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Empowering women through personalized AI wellness, Ayurvedic wisdom, IoT health metrics, and confidential support.
             </p>
-            <div className="flex space-x-4">
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-pink-400">
-                <Facebook className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-pink-400">
-                <Twitter className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-pink-400">
-                <Instagram className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-pink-400">
-                <Linkedin className="w-5 h-5" />
-              </Button>
+            <div className="flex items-center space-x-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full w-fit">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Private & HIPAA Compliant Data</span>
             </div>
           </div>
 
           {/* Quick Links */}
-          <div className="animate-slide-up" style={{ animationDelay: "0.1s" }}>
-            <h4 className="text-lg font-semibold text-white mb-6">Quick Links</h4>
-            <ul className="space-y-3">
+          <div>
+            <h4 className="font-semibold text-slate-900 mb-4 text-sm tracking-wider uppercase">Features</h4>
+            <ul className="space-y-2.5 text-sm">
               <li>
-                <a href="#dashboard" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Dashboard
-                </a>
+                <a href="#home" className="hover:text-pink-600 transition-colors">Home Dashboard</a>
               </li>
               <li>
-                <a href="#devices" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Smart Devices
-                </a>
+                <Link href="/clinical-reports" className="hover:text-pink-600 transition-colors">Clinical Report Parser</Link>
               </li>
               <li>
-                <a href="#health" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Health Tracking
-                </a>
+                <Link href="/anonymous-chat" className="hover:text-pink-600 transition-colors">Anonymous Sakhi Chat</Link>
               </li>
               <li>
-                <a href="#insights" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  AI Insights
-                </a>
-              </li>
-              <li>
-                <a href="#analytics" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Analytics
-                </a>
+                <Link href="/subscription" className="hover:text-pink-600 transition-colors">Wellness Plans</Link>
               </li>
             </ul>
           </div>
 
-          {/* Support */}
-          <div className="animate-slide-up" style={{ animationDelay: "0.2s" }}>
-            <h4 className="text-lg font-semibold text-white mb-6">Support</h4>
-            <ul className="space-y-3">
+          {/* Health Support */}
+          <div>
+            <h4 className="font-semibold text-slate-900 mb-4 text-sm tracking-wider uppercase">Health Resources</h4>
+            <ul className="space-y-2.5 text-sm">
               <li>
-                <a href="#" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Help Center
-                </a>
+                <span className="text-slate-700 font-medium">Ayurvedic Dosha Analysis</span>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Device Setup
-                </a>
+                <span className="text-slate-700 font-medium">Cycle & Hormonal Tracking</span>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Privacy Policy
-                </a>
+                <span className="text-slate-700 font-medium">Smart Vitals Sync</span>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Terms of Service
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-pink-400 transition-colors">
-                  Contact Us
-                </a>
+                <span className="text-slate-700 font-medium">Nutrition & Herbal Guides</span>
               </li>
             </ul>
           </div>
 
-          {/* Contact Info */}
-          <div className="animate-slide-up" style={{ animationDelay: "0.3s" }}>
-            <h4 className="text-lg font-semibold text-white mb-6">Contact</h4>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 text-pink-400" />
-                <span className="text-gray-300">hello@sakhi.health</span>
+          {/* Emergency Helplines */}
+          <div className="space-y-3">
+            <h4 className="font-semibold text-slate-900 mb-2 text-sm tracking-wider uppercase">Emergency Support</h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              SAKHI provides educational triage and is not an emergency medical service. If you need immediate care:
+            </p>
+            <div className="text-xs space-y-1.5 bg-rose-50 border border-rose-100 p-3 rounded-xl text-rose-900 font-medium">
+              <div className="flex items-center space-x-2">
+                <Phone className="w-3.5 h-3.5 text-rose-600" />
+                <span>National Emergency: 112 / 911</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 text-pink-400" />
-                <span className="text-gray-300">+91 99556-636879</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-5 h-5 text-pink-400" />
-                <span className="text-gray-300">Bangalore, INDIA</span>
+              <div className="flex items-center space-x-2">
+                <Phone className="w-3.5 h-3.5 text-rose-600" />
+                <span>Women Helpline: 1091</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-700 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-400 text-sm">© 2025 SAKHI. All rights reserved. Made with ❤️ for women's health.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-gray-400 hover:text-pink-400 text-sm transition-colors">
-              Privacy
-            </a>
-            <a href="#" className="text-gray-400 hover:text-pink-400 text-sm transition-colors">
-              Terms
-            </a>
-            <a href="#" className="text-gray-400 hover:text-pink-400 text-sm transition-colors">
-              Cookies
-            </a>
+        <div className="border-t border-pink-100 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
+          <p>© {new Date().getFullYear()} SAKHI Health Companion. All rights reserved.</p>
+          <div className="flex items-center space-x-6">
+            <span>Confidential & Encrypted</span>
+            <span>Made with Care for Women's Wellness</span>
           </div>
         </div>
       </div>
