@@ -1,7 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+type Device = {
+  id: string
+  name: string
+  type: string
+  status: string
+  battery: number
+  lastUpdated: string
+  settings: Record<string, unknown>
+  temperature?: number
+  hydrationLevel?: number
+  currentMood?: string
+}
+
 // Mock database - In production, use a real database
-const devices = [
+const devices: Device[] = [
   {
     id: "heat-pack-001",
     name: "Smart Heat Pack",

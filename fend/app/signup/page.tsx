@@ -3,48 +3,30 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+import { apiClient } from "@/lib/api-client"
+import { useAuth } from "@/contexts/AuthContext"
+import toast from "react-hot-toast"
 
 export default function SignupPage() {
   const router = useRouter()
+  const { refreshUser } = useAuth()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
     setLoading(true)
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.message || "Signup failed")
-        setLoading(false)
-        return
-      }
-
-      // store token & user info
-      if (typeof window !== "undefined") {
-        localStorage.setItem("sakhi_token", data.token)
-        localStorage.setItem("sakhi_user", JSON.stringify(data.user))
-      }
-
-      // redirect to home
+      await apiClient.post("/api/auth/register", { email, password, name })
+      await refreshUser()
+      toast.success("Account created successfully!")
       router.push("/")
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setError("Something went wrong. Please try again.")
+      toast.error(err.message || "Failed to create account.")
     } finally {
       setLoading(false)
     }
@@ -55,7 +37,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-pink-100 p-8 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">
-            Join <span className="text-pink-500">Sakhi</span>
+            Join <span className="text-pink-500">SAKHI</span>
           </h1>
           <p className="text-sm text-gray-500">
             Create your account to track cycles, mood, and wellness in one place.
@@ -108,11 +90,7 @@ export default function SignupPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-              {error}
-            </p>
-          )}
+
 
           <Button
             type="submit"

@@ -3,49 +3,29 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+import { apiClient } from "@/lib/api-client"
+import { useAuth } from "@/contexts/AuthContext"
+import toast from "react-hot-toast"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { refreshUser } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
     setLoading(true)
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.message || "Login failed")
-        setLoading(false)
-        return
-      }
-
-      // 🔔 SUCCESS ALERT
-      alert("Login successful! Welcome back 😊")
-
-      // store token
-      if (typeof window !== "undefined") {
-        localStorage.setItem("sakhi_token", data.token)
-        localStorage.setItem("sakhi_user", JSON.stringify(data.user))
-      }
-
+      await apiClient.post("/api/auth/login", { email, password })
+      await refreshUser()
+      toast.success("Login successful! Welcome back 😊")
       router.push("/")
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setError("Something went wrong. Please try again.")
+      toast.error(err.message || "Invalid email or password.")
     } finally {
       setLoading(false)
     }
@@ -56,7 +36,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-pink-100 p-8 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back to <span className="text-pink-500">Sakhi</span>
+            Welcome back to <span className="text-pink-500">SAKHI</span>
           </h1>
         </div>
 
@@ -90,11 +70,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-              {error}
-            </p>
-          )}
+
 
           <Button
             type="submit"

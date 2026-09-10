@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 // Mock health data - In production, use a real database
-const healthData = {
+const healthData: Record<string, any> = {
   userId: "user-001",
   currentCycle: {
     day: 14,

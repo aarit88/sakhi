@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Menu, X, Heart, Dumbbell, Utensils, Activity, Sparkles, Home } from "lucide-react"
+import { Menu, X, Heart, Dumbbell, Utensils, Activity, Sparkles, Home, MessageCircle, FileText, LogOut } from "lucide-react"
 import { useMagneticEffect } from "@/hooks/use-advanced-animations"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -13,6 +14,7 @@ export function Navigation() {
   const [scrollPercent, setScrollPercent] = useState(0)
 
   const router = useRouter()
+  const { isAuthenticated, logout, user } = useAuth()
 
   const logoRef = useRef<HTMLDivElement>(null)
   
@@ -26,6 +28,11 @@ export function Navigation() {
     { href: "#diet", label: "Nutrition", icon: Utensils },
     { href: "#health", label: "Health", icon: Sparkles },
     { href: "#dashboard", label: "Dashboard", icon: Activity },
+  ]
+
+  const toolItems = [
+    { href: "/anonymous-chat", label: "Chat", icon: MessageCircle },
+    { href: "/clinical-reports", label: "Reports", icon: FileText },
   ]
 
   useEffect(() => {
@@ -59,6 +66,11 @@ export function Navigation() {
   }, [])
 
   const handleNavClick = (href: string) => {
+    if (href.startsWith("/")) {
+      router.push(href)
+      setIsOpen(false)
+      return
+    }
     const element = document.querySelector(href)
     if (element) {
       element.scrollIntoView({ behavior: "smooth" })
@@ -83,7 +95,7 @@ export function Navigation() {
               onClick={() => router.push("/")}
             >
               <div className="relative w-10 h-10 bg-gradient-to-br from-pink-400 to-rose-500 animate-morph-blob-1 flex items-center justify-center group-hover:animate-glow-pulse transition-all duration-300">
-                <img src="logo.jpg" />
+                <Heart className="w-5 h-5 text-white animate-pulse" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 bg-clip-text text-transparent group-hover:animate-gradient-shift animate-text-reveal">
                 SAKHI
@@ -112,25 +124,52 @@ export function Navigation() {
                 )
               })}
 
-              {/* Login + Signup */}
+              {toolItems.map((item) => {
+                const IconComponent = item.icon
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => handleNavClick(item.href)}
+                    className="relative flex items-center space-x-2 rounded-xl px-4 py-2 text-gray-700 transition-all duration-300 hover:bg-teal-50 hover:text-teal-600"
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                )
+              })}
+
+              {/* Login + Signup or Logout */}
               <div className="flex space-x-3 ml-4">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/login")}
-                  className="text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
-                >
-                  Login
-                </Button>
-                
-                <Button
-                  ref={signupCtaRef}
-                  onClick={() => router.push("/signup")}
-                  className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg transition-all duration-300"
-                  style={{ transform: `translate(${signupCtaTransform.x}px, ${signupCtaTransform.y}px)` }}
-                  {...signupCtaHandlers}
-                >
-                  Signup
-                </Button>
+                {isAuthenticated ? (
+                  <Button
+                    variant="outline"
+                    onClick={logout}
+                    className="text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/login")}
+                      className="text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
+                    >
+                      Login
+                    </Button>
+                    
+                    <Button
+                      ref={signupCtaRef}
+                      onClick={() => router.push("/signup")}
+                      className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg transition-all duration-300"
+                      style={{ transform: `translate(${signupCtaTransform.x}px, ${signupCtaTransform.y}px)` }}
+                      {...signupCtaHandlers}
+                    >
+                      Signup
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -170,28 +209,58 @@ export function Navigation() {
                     </button>
                   )
                 })}
+
+                {toolItems.map((item) => {
+                  const IconComponent = item.icon
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={() => handleNavClick(item.href)}
+                      className="w-full flex items-center space-x-3 px-3 py-3 rounded-xl text-gray-700 transition-all duration-300 hover:bg-teal-50/80 hover:text-teal-600"
+                    >
+                      <IconComponent className="w-5 h-5" />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  )
+                })}
                 
-                {/* Mobile Login + Signup */}
+                {/* Mobile Login + Signup or Logout */}
                 <div className="flex flex-col space-y-2 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsOpen(false)
-                      router.push("/login")
-                    }}
-                    className="w-full text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
-                  >
-                    Login
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      setIsOpen(false)
-                      router.push("/signup")
-                    }}
-                    className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg"
-                  >
-                    Signup
-                  </Button>
+                  {isAuthenticated ? (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsOpen(false)
+                        logout()
+                      }}
+                      className="w-full text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  ) : (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsOpen(false)
+                          router.push("/login")
+                        }}
+                        className="w-full text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
+                      >
+                        Login
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setIsOpen(false)
+                          router.push("/signup")
+                        }}
+                        className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg"
+                      >
+                        Signup
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -208,12 +277,15 @@ export function Navigation() {
               <button
                 key={item.href}
                 onClick={() => handleNavClick(item.href)}
-                className={`group relative w-3 h-3 rounded-full transition-all duration-300 ${
-                  isActive ? "bg-pink-500 shadow-lg" : "bg-gray-300 hover:bg-pink-400"
-                }`}
+                className="p-2 group flex items-center justify-center"
                 title={item.label}
+                aria-label={`Scroll to ${item.label}`}
               >
-                {isActive && <div className="absolute inset-0 rounded-full bg-pink-500 animate-ping opacity-30" />}
+                <div className={`relative w-3 h-3 rounded-full transition-all duration-300 ${
+                  isActive ? "bg-pink-500 shadow-lg scale-125" : "bg-gray-300 group-hover:bg-pink-400"
+                }`}>
+                  {isActive && <div className="absolute inset-0 rounded-full bg-pink-500 animate-ping opacity-30" />}
+                </div>
               </button>
             )
           })}

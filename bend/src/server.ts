@@ -1,71 +1,88 @@
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
+import cookieParser from "cookie-parser"
+import helmet from "helmet"
 
-// Routers
 import authRouter from "./routes/auth"
 import usersRouter from "./routes/users"
 import periodTrackingRouter from "./routes/period-tracking"
 import healthWellnessRouter from "./routes/health-wellness"
 import remindersRouter from "./routes/reminders"
 import communityRouter from "./routes/community"
+import anonymousChatRouter from "./routes/anonymous-chat"
+import clinicalReportsRouter from "./routes/clinical-reports"
+import healthRouter from "./routes/health"
+import aiRouter from "./routes/ai"
+import visualContentRouter from "./routes/visual-content"
+import { createRateLimiter, securityHeaders } from "./middleware/security"
 
 dotenv.config()
+
+// ── Security: Validate critical environment variables at startup ──────────────
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  console.error(
+    "[SAKHI STARTUP ERROR] JWT_SECRET environment variable is required in production. " +
+    "The server will not start without it. Set JWT_SECRET to a strong random string."
+  )
+  process.exit(1)
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const app = express()
 const PORT = process.env.PORT || 5000
 
-// Middleware
-app.use(cors())
-app.use(express.json())
+app.disable("x-powered-by")
 
-// Health check
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  "http://localhost:3000",
+].filter(Boolean) as string[]
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+)
+app.use(helmet())
+app.use(securityHeaders)
+app.use(createRateLimiter({ windowMs: 60_000, max: 180 }))
+app.use(express.json({ limit: "1mb" }))
+app.use(cookieParser())
+
 app.get("/", (_req, res) => {
-  res.json({ message: "Sakhi Backend API running" })
+  res.json({
+    message: "SAKHI Backend API running",
+    features: ["auth", "period-tracking", "anonymous-chat", "clinical-report-parser"],
+  })
 })
 
-/* =======================
-   API Route Mounting
-======================= */
-
-// 🔹 Authentication (Signup + Login)
 app.use("/api/auth", authRouter)
-
-// 🔹 Users
 app.use("/api/users", usersRouter)
-
-// 🔹 Period Tracking
 app.use("/api/period-tracking", periodTrackingRouter)
-
-// 🔹 Health & Wellness
 app.use("/api/health-wellness", healthWellnessRouter)
-
-// 🔹 Reminders
+app.use("/api/health", healthRouter)
 app.use("/api/reminders", remindersRouter)
-
-// 🔹 Community
 app.use("/api/community", communityRouter)
+app.use("/api/anonymous-chat", anonymousChatRouter)
+app.use("/api/clinical-reports", clinicalReportsRouter)
+app.use("/api/ai", aiRouter)
+app.use("/api/visual-content", visualContentRouter)
 
-/* =======================
-   404 Handler
-======================= */
 app.use((_req, res) => {
   res.status(404).json({ message: "Route not found" })
 })
 
-/* =======================
-   Global Error Handler
-======================= */
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error("Unexpected error:", err)
   res.status(500).json({ message: "Internal server error" })
 })
 
-/* =======================
-   Start Server
-======================= */
-app.listen(PORT, () => {
-  console.log(`Sakhi backend running on http://localhost:${PORT}`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`SAKHI backend running on http://localhost:${PORT}`)
+  })
+}
 
 export default app

@@ -1,6 +1,6 @@
-# Sakhi Backend
+# SAKHI Backend
 
-Backend API for Sakhi - Your Personal Companion for Holistic Period Care
+Backend API for SAKHI - Your Personal Companion for Holistic Period Care
 
 ## Project Structure
 

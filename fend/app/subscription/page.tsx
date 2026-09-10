@@ -48,7 +48,7 @@ export default function SubscriptionPage() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white p-8">
       <div className="max-w-5xl mx-auto text-center space-y-6">
         <h1 className="text-4xl font-bold text-gray-900">
-          Choose Your <span className="text-pink-500">Sakhi Plan</span>
+          Choose Your <span className="text-pink-500">SAKHI Plan</span>
         </h1>
         <p className="text-gray-600 text-lg">
           Unlock personalized women's wellness with AI, Ayurveda & IoT tracking.

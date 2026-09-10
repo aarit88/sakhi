@@ -1,0 +1,5 @@
+model_list:
+  - model_name: nemotron
+    litellm_params:
+      model: openrouter/qwen/qwen-2.5-coder-32b-instruct
+      api_key: "os.environ/OPENROUTER_API_KEY"

@@ -36,7 +36,7 @@ export function InteractiveHero() {
   >([
     {
       from: "them",
-      text: "Hi, I'm an anonymous Sakhi. I need some suggestions, can you help me?",
+      text: "Hi, I'm an anonymous SAKHI. I need some suggestions, can you help me?",
       time: "Just now",
     },
   ])
@@ -215,12 +215,8 @@ export function InteractiveHero() {
                 AI-Powered Women's Health
               </Badge>
 
-              {/* SAKHI title with original fancy animation */}
-              <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight">
-                Meet <span className="text-pink-500">SAKHI</span>{" "}
-                <span className="sakhi-title-animated sakhi-title-gradient bg-linear-to-r from-pink-500 via-rose-500 to-pink-600 bg-clip-text text-transparent animate-shimmer sakhi-title-overlay">
-                  SAKHI
-                </span>
+              <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                Meet <span className="text-pink-500 whitespace-nowrap">SAKHI</span>
               </h1>
 
               <p className="text-xl text-gray-600 leading-relaxed max-w-lg">
@@ -393,11 +389,12 @@ export function InteractiveHero() {
         </div>
       </div>
 
-      {/* 🔹 SINGLE cartoon avatar popup trigger with notification dot */}
+      {/* 🔹 Cartoon avatar popup trigger on left side (prevents overlap with right AI chat widget) */}
       {showAnonInvite && (
         <button
           type="button"
-          className="fixed bottom-4 right-4 z-50 rounded-full shadow-2xl border-4 border-white bg-white overflow-hidden animate-slide-in-up"
+          aria-label="Open Anonymous SAKHI Chat"
+          className="fixed bottom-6 left-6 z-40 rounded-full shadow-2xl border-4 border-white bg-white overflow-hidden animate-slide-in-up hover:scale-105 transition-transform"
           onClick={() => {
             setIsAnonChatOpen((open) => {
               const next = !open
@@ -406,10 +403,10 @@ export function InteractiveHero() {
             })
           }}
         >
-          <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden">
+          <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden">
             <Image
-              src="/sakhi-cat.png" // ⬅️ your cartoon image in /public
-              alt="Anonymous Sakhi"
+              src="/sakhi-chat-avatar.png"
+              alt="Anonymous SAKHI"
               fill
               className="object-cover"
             />
@@ -423,16 +420,16 @@ export function InteractiveHero() {
         </button>
       )}
 
-      {/* 🔹 Anonymous chat window (opens when avatar clicked) */}
+      {/* 🔹 Anonymous chat window (opens on left side) */}
       {isAnonChatOpen && (
-        <div className="fixed bottom-24 right-4 z-50 w-80 max-w-[90vw] bg-white border border-pink-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-          <div className="bg-linear-to-r from-pink-500 to-rose-500 px-4 py-3 flex items-center justify-between">
+        <div className="fixed bottom-24 left-6 z-40 w-80 max-w-[90vw] bg-white border border-pink-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+          <div className="bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                 <MessageCircle className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Anonymous Sakhi needs a suggestion</p>
+                <p className="text-xs font-semibold text-white">Anonymous SAKHI Community</p>
                 <p className="text-[10px] text-pink-100">You are replying anonymously</p>
               </div>
             </div>

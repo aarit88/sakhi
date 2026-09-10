@@ -31,6 +31,17 @@ model User {
   reminders  Reminder[]
   posts      CommunityPost[]
   comments   Comment[]
+  anonQuestions AnonQuestion[]
+  anonAnswers   AnonAnswer[]
+  symptomLogs   SymptomLog[]
+  moodLogs      MoodLog[]
+  sleepLogs     SleepLog[]
+  hydrationLogs HydrationLog[]
+  activityLogs  ActivityLog[]
+  medicalReports MedicalReport[]
+  aiConversations AIConversation[]
+  anonChatSessions AnonChatSession[]
+  anonChatMessages AnonChatMessage[]
 }
 
 model PeriodLog {
@@ -105,4 +116,160 @@ model Comment {
   userId    String
   content   String
   createdAt DateTime      @default(now())
+}
+
+model AnonQuestion {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  content   String
+  category  String?
+  answers   AnonAnswer[]
+  createdAt DateTime     @default(now())
+}
+
+model AnonAnswer {
+  id         String       @id @default(cuid())
+  questionId String
+  question   AnonQuestion @relation(fields: [questionId], references: [id])
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  content    String
+  createdAt  DateTime     @default(now())
+}
+
+model SymptomLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  date      DateTime
+  type      String
+  severity  String
+  createdAt DateTime @default(now())
+}
+
+model MoodLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  date      DateTime
+  score     Int
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model SleepLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  date      DateTime
+  hours     Float
+  quality   Int
+  createdAt DateTime @default(now())
+}
+
+model HydrationLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  date      DateTime
+  intake    Int
+  target    Int
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  date      DateTime
+  steps     Int
+  calories  Int
+  createdAt DateTime @default(now())
+}
+
+model MedicalReport {
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+  title         String
+  originalName  String   @default("report.pdf")
+  mimeType      String   @default("application/pdf")
+  sizeBytes     Int      @default(0)
+  fileUrl       String
+  parsedText    String?
+  extractedData String?  // JSON string
+  status        String   // PENDING, COMPLETED, ERROR
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AIConversation {
+  id        String       @id @default(cuid())
+  user      User         @relation(fields: [userId], references: [id])
+  userId    String
+  title     String
+  createdAt DateTime     @default(now())
+  messages  AIMessage[]
+}
+
+model AIMessage {
+  id             String         @id @default(cuid())
+  conversation   AIConversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+  role           String
+  content        String
+  safetyStatus   String?
+  createdAt      DateTime       @default(now())
+}
+
+model AnonChatSession {
+  id        String            @id @default(cuid())
+  user      User?             @relation(fields: [userId], references: [id])
+  userId    String?
+  createdAt DateTime          @default(now())
+  messages  AnonChatMessage[]
+}
+
+model AnonChatMessage {
+  id        String          @id @default(cuid())
+  session   AnonChatSession @relation(fields: [sessionId], references: [id])
+  sessionId String
+  user      User?           @relation(fields: [userId], references: [id])
+  userId    String?
+  role      String
+  content   String
+  createdAt DateTime        @default(now())
+}
+
+model AyurvedicKnowledgeEntry {
+  id                    String   @id @default(cuid())
+  title                 String
+  tradition             String   @default("Ayurveda")
+  condition             String?  // e.g., "Menstrual Cramps"
+  dosha                 String?  // e.g., "Vata", "Pitta", "Kapha"
+  symptoms              String?  // comma-separated
+  cyclePhase            String?  // e.g., "Menstrual", "Follicular"
+  traditionalExplanation String
+  lifestyleGuidance     String   // JSON string array of tips
+  pathya                String?  // Beneficial practices/diet (JSON string array)
+  apathya               String?  // Harmful practices/diet (JSON string array)
+  contraindications     String?  // JSON string array
+  safetyFlags           String?  // JSON string array of when NOT to use this
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model VisualContent {
+  id           String   @id @default(cuid())
+  category     String
+  language     String   @default("en")
+  title        String
+  description  String?
+  imageUrl     String
+  orderIndex   Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

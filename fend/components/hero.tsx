@@ -16,9 +16,9 @@ export function Hero() {
                 <Heart className="w-4 h-4 mr-2" />
                 Smart Women's Health Companion
               </div>
-              <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight">
+              <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
                 Meet{" "}
-                <span className="bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 bg-clip-text text-transparent whitespace-nowrap">
                   SAKHI
                 </span>
               </h1>

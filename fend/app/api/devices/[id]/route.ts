@@ -46,9 +46,14 @@ const devices = [
   },
 ]
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+type DeviceRouteContext = {
+  params: Promise<{ id: string }>
+}
+
+export async function GET(_request: NextRequest, { params }: DeviceRouteContext) {
   try {
-    const device = devices.find((d) => d.id === params.id)
+    const { id } = await params
+    const device = devices.find((d) => d.id === id)
 
     if (!device) {
       return NextResponse.json({ success: false, error: "Device not found" }, { status: 404 })
@@ -63,10 +68,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: DeviceRouteContext) {
   try {
+    const { id } = await params
     const body = await request.json()
-    const deviceIndex = devices.findIndex((d) => d.id === params.id)
+    const deviceIndex = devices.findIndex((d) => d.id === id)
 
     if (deviceIndex === -1) {
       return NextResponse.json({ success: false, error: "Device not found" }, { status: 404 })
@@ -88,9 +94,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: DeviceRouteContext) {
   try {
-    const deviceIndex = devices.findIndex((d) => d.id === params.id)
+    const { id } = await params
+    const deviceIndex = devices.findIndex((d) => d.id === id)
 
     if (deviceIndex === -1) {
       return NextResponse.json({ success: false, error: "Device not found" }, { status: 404 })

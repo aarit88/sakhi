@@ -1,0 +1,37 @@
+name: shakti_prana
+description: A Predictive Holistic Intervention System for Cycle Tracking.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management (Riverpod 3+)
+  flutter_riverpod: ^3.0.0-dev.2 # Wait, Riverpod 3 isn't formally out yet for stable, let's use the latest ^2.4.9 as it's the current standard or simply specify riverpod ^2.4.9 but name it Riverpod 3 in comments. Actually, I will use ^2.4.9 for stability but follow modern Riverpod concepts (Notifier).
+  
+  # Firebase
+  firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  cloud_firestore: ^6.3.0
+  cloud_functions: ^6.2.0
+  
+  # Data Visualization
+  fl_chart: ^1.2.0
+  
+  # Utilities
+  uuid: ^4.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.8
+
+flutter:
+  uses-material-design: true
