@@ -4,13 +4,22 @@ import { setAuthSession, AuthUser } from "@/lib/auth"
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
-    const email = body.email || "newuser@example.com"
-    const name = body.name || email.split("@")[0] || "Sakhi Member"
+    const { email, password, name } = body
+
+    if (!email || typeof email !== "string" || !password) {
+      return NextResponse.json(
+        { message: "Email and password are required" },
+        { status: 400 }
+      )
+    }
+
+    const cleanEmail = email.trim().toLowerCase()
+    const displayName = (name && typeof name === "string" && name.trim()) ? name.trim() : (cleanEmail.split("@")[0] || "Member")
 
     const user: AuthUser = {
       id: `user-${Date.now().toString(36)}`,
-      email,
-      name,
+      email: cleanEmail,
+      name: displayName,
       role: "USER",
     }
 

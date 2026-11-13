@@ -1,4 +1,5 @@
 import { Router } from "express"
+import jwt from "jsonwebtoken"
 import { z } from "zod"
 import prisma from "../prisma"
 import { requireAuth, AuthRequest } from "../middleware/authMiddleware"
@@ -26,18 +27,22 @@ const chatMessageSchema = z.object({
 // POST /api/anonymous-chat/sessions
 router.post("/sessions", async (req, res) => {
   try {
-    // Optional auth
-    const token = req.cookies?.token
-    let userId = null
+    // Optional auth: check cookie first, then Bearer header
+    const authHeader = req.headers.authorization
+    const token = req.cookies?.token || (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null)
+    let userId: string | null = null
+
     if (token) {
-      // Decode user if possible, but keep chat anon to other users
-      // This is mostly so user can see their own history
-      import("jsonwebtoken").then(jwt => {
-        try {
-          const decoded: any = jwt.verify(token, process.env.JWT_SECRET || "dev_secret")
+      try {
+        const secret = process.env.JWT_SECRET || "dev_secret"
+        const decoded: any = jwt.verify(token, secret)
+        if (decoded?.userId) {
           userId = decoded.userId
-        } catch(e) {}
-      })
+        }
+      } catch (tokenErr) {
+        // Invalid or expired token: proceed with anonymous session (userId = null)
+        userId = null
+      }
     }
 
     const session = await prisma.anonChatSession.create({

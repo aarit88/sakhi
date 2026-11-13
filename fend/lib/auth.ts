@@ -7,33 +7,27 @@ export interface AuthUser {
   role: string
 }
 
-const DEFAULT_USER: AuthUser = {
-  id: "user-sakhi-001",
-  email: "priya.sharma@example.com",
-  name: "Priya Sharma",
-  role: "USER"
-}
-
-// In-memory users for session persistence across hot calls
-const usersStore = new Map<string, AuthUser>()
-usersStore.set(DEFAULT_USER.email, DEFAULT_USER)
+// In-memory sessions mapped by opaque session IDs (no raw email in cookies)
+const sessionsStore = new Map<string, AuthUser>()
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies()
-  const sessionEmail = cookieStore.get("sakhi_user_email")?.value
-  if (sessionEmail && usersStore.has(sessionEmail)) {
-    return usersStore.get(sessionEmail)!
+  const sessionId = cookieStore.get("sakhi_session_id")?.value
+  if (sessionId && sessionsStore.has(sessionId)) {
+    return sessionsStore.get(sessionId)!
   }
-  // Default to demo user so the app is immediately usable in AI Studio
-  return DEFAULT_USER
+  return null
 }
 
 export async function setAuthSession(user: AuthUser) {
-  usersStore.set(user.email, user)
+  const sessionId = `sess_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`
+  sessionsStore.set(sessionId, user)
+
   const cookieStore = await cookies()
-  cookieStore.set("sakhi_user_email", user.email, {
+  cookieStore.set("sakhi_session_id", sessionId, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 7 * 24 * 60 * 60,
   })
@@ -41,5 +35,11 @@ export async function setAuthSession(user: AuthUser) {
 
 export async function clearAuthSession() {
   const cookieStore = await cookies()
+  const sessionId = cookieStore.get("sakhi_session_id")?.value
+  if (sessionId) {
+    sessionsStore.delete(sessionId)
+  }
+  cookieStore.delete("sakhi_session_id")
+  // Clear any legacy plain email cookie if present
   cookieStore.delete("sakhi_user_email")
 }

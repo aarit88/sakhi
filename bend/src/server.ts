@@ -20,12 +20,14 @@ import { createRateLimiter, securityHeaders } from "./middleware/security"
 dotenv.config()
 
 // ── Security: Validate critical environment variables at startup ──────────────
-if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
-  console.error(
-    "[SAKHI STARTUP ERROR] JWT_SECRET environment variable is required in production. " +
-    "The server will not start without it. Set JWT_SECRET to a strong random string."
-  )
-  process.exit(1)
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "dev_secret") {
+    console.error(
+      "[SAKHI STARTUP ERROR] A secure, non-default JWT_SECRET environment variable is required in production. " +
+      "The server will not start without it. Set JWT_SECRET to a strong random string."
+    )
+    process.exit(1)
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,16 @@ import dotenv from "dotenv"
 
 dotenv.config()
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret"
+export const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET
+  if (process.env.NODE_ENV === "production") {
+    if (!secret || secret === "dev_secret") {
+      throw new Error("A strong, non-default JWT_SECRET is required in production mode.")
+    }
+    return secret
+  }
+  return secret || "dev_secret"
+}
 
 export interface AuthRequest extends Request {
   user?: {
@@ -15,16 +24,23 @@ export interface AuthRequest extends Request {
 
 export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies?.token
+    // 1. Check HTTP-only cookie
+    let token = req.cookies?.token
+
+    // 2. Fall back to Authorization: Bearer header
+    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1]
+    }
 
     if (!token) {
       return res.status(401).json({ message: "Authentication required. No token provided." })
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any
+    const secret = getJwtSecret()
+    const decoded = jwt.verify(token, secret) as any
     req.user = {
       userId: decoded.userId,
-      role: decoded.role
+      role: decoded.role || "USER"
     }
 
     next()
