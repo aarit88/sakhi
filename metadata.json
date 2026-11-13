@@ -1,0 +1,6 @@
+{
+  "name": "SAKHI",
+  "description": "IoT-powered health tracking and smart wellness companion for women",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
