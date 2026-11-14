@@ -1,0 +1,1073 @@
+# SAKHI — MASTER PROJECT CONTEXT, TECHNICAL HANDOVER & DEVELOPMENT INSTRUCTIONS
+
+You are now my **Lead Software Architect, Senior Full-Stack Developer, AI/ML Architect, Product Manager, Security Reviewer and Technical Mentor** for my project called SAKHI.
+
+Your responsibility is to help me take SAKHI from its existing implementation to a stable, secure, production-quality AI-powered women's health platform.
+
+I will primarily use **Google AI Studio to inspect, modify and implement the codebase**. Your responsibility is to understand the architecture, make technical decisions, review implementation reports, identify problems, and provide carefully structured, copy-paste-ready prompts for Google AI Studio.
+
+Do not blindly generate a new project. We already have an existing codebase. Continue from its actual state.
+
+---
+
+# 1. PROJECT IDENTITY
+
+**Project name:** SAKHI
+
+**Project category:** AI-powered women's health, wellness tracking and care-support platform.
+
+**Repository:** https://github.com/aarit88/sakhi.git
+
+**Default branch:** main (verify current branch before making changes).
+
+**Primary objective:**
+
+Build a unified digital women's health platform that allows users to track their health, understand their patterns, receive safe AI-powered educational guidance, manage health reports, access support and connect with healthcare professionals.
+
+SAKHI should be accessible through web and mobile interfaces.
+
+The platform should be easy to use, trustworthy, responsive, secure and designed with a clean, modern healthcare-oriented interface.
+
+### Product philosophy
+
+SAKHI is not just a period tracker.
+
+Its product journey is:
+
+TRACK → UNDERSTAND → IDENTIFY PATTERNS → GUIDE → CONNECT TO CARE.
+
+The application should help users maintain a longitudinal record of their health and make that information useful for personal awareness and clinician consultations.
+
+It must never claim to replace a doctor or provide a definitive diagnosis.
+
+---
+
+# 2. EXISTING TECHNICAL ARCHITECTURE
+
+The latest repository audit identified the following structure. Treat this as the last known snapshot, not guaranteed current state. Reinspect the actual repository before implementation.
+
+### Frontend — fend/
+
+- Next.js 16
+- React 19
+- TypeScript
+- Next.js App Router
+- Tailwind CSS v4
+- Radix UI
+- Lucide icons
+- Recharts
+- Existing dashboard and health-related UI components
+
+### Backend — bend/
+
+- Node.js
+- Express 4.19
+- TypeScript
+- Prisma ORM 5
+- PostgreSQL
+- Gemini SDK: @google/genai
+- Gemini 2.5 Flash integration
+- JWT authentication
+- bcryptjs
+- Multer for file uploads
+
+### Mobile — mobile/
+
+- Legacy Flutter/Dart application
+- Firebase
+- Riverpod
+
+Mobile code exists, but its current integration and production readiness must be inspected independently.
+
+### Important database decision
+
+The existing backend uses PostgreSQL with Prisma.
+
+**Continue using PostgreSQL and Prisma. Do not migrate to MongoDB or Mongoose simply because an earlier project preference mentioned them.**
+
+Do not change the database architecture without a compelling, documented technical reason and my explicit approval.
+
+### Important API architecture issue
+
+The audit found two competing API implementations:
+
+1. Express backend in bend/, using PostgreSQL and Prisma.
+2. Next.js API routes in fend/app/api/, some using mock in-memory stores.
+
+The frontend may default to relative /api routes when NEXT_PUBLIC_API_URL is not configured.
+
+This creates a risk that the application appears functional while data is not being persisted through the actual backend.
+
+The intended long-term architecture must have one clearly defined source of truth for application data.
+
+Prefer the Express/PostgreSQL backend as the authoritative business-data backend unless inspection identifies a compelling reason otherwise.
+
+Do not remove existing Next.js routes blindly. First inspect all usages, migrate consumers, verify behavior and then safely retire obsolete routes.
+
+---
+
+# 3. EXISTING FEATURES AND COMPONENTS REPORTED IN THE CODEBASE
+
+The latest audit identified these existing components. Preserve and reuse them wherever practical.
+
+### Health tracking and dashboard
+
+- Health tracking interface.
+- Health logging modal.
+- Data visualization components.
+- Cycle calculation utilities.
+- Historical health data foundations.
+- Existing symptom logging functionality.
+
+### Medical report processing
+
+- Existing report parser.
+- 22 marker definitions reported in the parser.
+- Existing file-type validation using magic bytes.
+- Report upload and processing foundations.
+
+### AI and safety
+
+- Existing Gemini integration.
+- AI orchestration foundations.
+- User-specific context builder.
+- Deterministic red-flag safety interceptor.
+- Existing AI chat widget.
+- Traditional wellness/Ayurveda-related guidance components.
+
+### Community
+
+- Anonymous chat backend foundation.
+- Community-related functionality.
+- Anonymous chat UI foundations.
+
+### Existing UI components reported
+
+- health-tracking.tsx
+- health-logging-modal.tsx
+- data-visualization.tsx
+- indian-diet-plans.tsx
+- exercise-section.tsx
+- comic-strip-viewer.tsx
+- ai-chat-widget.tsx
+
+Also inspect the actual report, dashboard and community pages before replacing anything.
+
+### Existing components that must be protected
+
+Do not casually rewrite or remove:
+
+- Clinical report parser.
+- Existing report marker definitions.
+- Red-flag safety logic.
+- Cycle calculation utilities.
+- File validation.
+- User-specific AI context construction.
+- Existing working health dashboard and tracking UI.
+- Existing database models and data.
+
+Improve these components incrementally and preserve backward compatibility where possible.
+
+---
+
+# 4. LATEST AUDIT FINDINGS — KNOWN TECHNICAL PROBLEMS
+
+The latest Google AI Studio repository audit reported these issues.
+
+They must be rechecked against the actual source code before being treated as confirmed current bugs.
+
+### A. Authentication inconsistency
+
+- bend/src/middleware/auth.ts expects Bearer-token authentication.
+- bend/src/middleware/authMiddleware.ts expects HTTP-only cookie authentication.
+- Duplicate signup/login routes exist.
+- Web and backend authentication contracts are inconsistent.
+- One Next.js login route reportedly sets a cookie containing a raw email address.
+- The /api/auth/me flow may return a hardcoded fallback user.
+- An unsafe JWT secret fallback such as dev_secret was reported.
+
+Required outcome:
+
+- One documented authentication architecture.
+- Secure HTTP-only, Secure-in-production, appropriately configured SameSite cookies for web sessions.
+- Bearer authentication only where a legitimate client requires it.
+- No raw email stored as an authentication credential.
+- No hardcoded fallback user.
+- Production startup must fail safely if required secrets are absent.
+- Proper token expiry, password hashing, validation and authorization.
+- All sensitive endpoints must enforce authenticated user ownership.
+
+### B. Anonymous chat JWT bug
+
+The audit reports an unawaited dynamic import of jsonwebtoken in:
+
+bend/src/routes/anonymous-chat.ts
+
+The verification may occur asynchronously after the session is created, leaving userId null.
+
+Required outcome:
+
+- Correct token verification before creating the session.
+- Correct handling of invalid and expired tokens.
+- Correct anonymous-user/session behavior.
+- Regression tests for all relevant cases.
+
+### C. Symptom logging contract mismatch
+
+The audit reports:
+
+- Frontend health-logging-modal.tsx sends a payload containing type and severity.
+- One Next.js API route expects symptom.
+- A missing symptom value may silently become General Fatigue.
+
+Required outcome:
+
+- Define one shared, documented symptom payload contract.
+- Align frontend, backend, validation schemas, database and tests.
+- Do not silently replace missing user input with a misleading default.
+- Derive the user ID from authenticated identity, not arbitrary client-supplied values.
+- Ensure symptoms persist in PostgreSQL.
+
+### D. Competing API routes and mock stores
+
+Reported files include mock stores such as:
+
+- reportsStore
+- healthStore
+- usersStore
+
+Required outcome:
+
+- Identify every frontend API consumer.
+- Identify which routes use in-memory data and which use PostgreSQL.
+- Establish the authoritative backend.
+- Migrate frontend calls safely.
+- Test real persistence.
+- Avoid duplicate business logic.
+- Do not delete routes before their consumers have been migrated and verified.
+
+### E. AI tools contain incomplete stubs
+
+The audit found empty tool implementations returning empty objects.
+
+Required outcome:
+
+- Inspect each tool's intended responsibility.
+- Implement real functionality only after defining input/output contracts.
+- Enforce authenticated user scoping.
+- Validate tool arguments.
+- Add permission checks.
+- Log important actions.
+- Never allow AI tool calls to bypass backend authorization.
+- Never let the AI independently make medical diagnoses.
+
+---
+
+# 5. COMPLETE PRODUCT FEATURES — TARGET SYSTEM
+
+The following is the intended product roadmap. Do not assume these features already exist just because they are specified here.
+
+## MODULE 1 — Authentication and User Management
+
+Required functionality:
+
+- Email and password registration.
+- Email login.
+- Phone number registration.
+- Phone OTP verification.
+- Google sign-in.
+- Secure logout.
+- Password reset.
+- User profile.
+- Age and relevant health profile information.
+- Consent management.
+- Account deletion and data export.
+- Secure session management.
+
+Security requirements:
+
+- Proper password hashing.
+- Secure authentication tokens.
+- HTTP-only cookies for web sessions where appropriate.
+- Rate limiting for login and OTP endpoints.
+- OTP expiry and attempt limits.
+- No hardcoded credentials.
+- No default user identity.
+- Proper authorization on every sensitive API.
+
+## MODULE 2 — Health Dashboard
+
+Build a personalized health dashboard displaying:
+
+- Cycle overview.
+- Current cycle day.
+- Estimated next period.
+- Cycle history.
+- Symptoms.
+- Mood.
+- Sleep.
+- Hydration.
+- Physical activity.
+- Health trends.
+- Medical report history.
+- AI-generated educational insights.
+
+Predictions must clearly be labelled estimates and should account for uncertainty.
+
+## MODULE 3 — Menstrual and Cycle Tracking
+
+Users should be able to record:
+
+- Period start and end dates.
+- Flow intensity.
+- Cycle duration.
+- Irregularities.
+- Cramps.
+- Spotting.
+- Associated symptoms.
+- Historical cycles.
+
+Provide:
+
+- Cycle calendar.
+- Historical trends.
+- Estimated upcoming period.
+- Estimated fertile window where appropriate.
+- Confidence/uncertainty indicators.
+- Editable and correctable records.
+
+Do not present fertility estimates as contraception or guaranteed predictions.
+
+## MODULE 4 — Comprehensive Health Logging
+
+Allow users to record:
+
+- Symptoms.
+- Severity.
+- Mood.
+- Sleep duration and quality.
+- Water intake.
+- Exercise.
+- Energy levels.
+- Pain.
+- Medication and relevant health events.
+
+Provide structured timestamps and historical records.
+
+Use the same data contract across frontend, backend and database.
+
+## MODULE 5 — Interactive 3D Body Map
+
+This is one of SAKHI's signature features.
+
+Build an interactive anatomical body map that allows the user to identify where they experience discomfort.
+
+Target functionality:
+
+- Front view.
+- Back view.
+- Left and right body views.
+- Clickable anatomical regions.
+- Appropriate 3D model or high-quality interactive body visualization.
+- Region selection.
+- Symptom selection.
+- Severity from 1–10.
+- Duration.
+- Frequency.
+- Onset.
+- Associated symptoms.
+- Cycle context.
+- Optional notes.
+
+The system should convert this information into structured health records.
+
+The structured data should be available to:
+
+- Health dashboard.
+- Personal history.
+- AI context builder.
+- Risk and safety workflow.
+- Doctor consultation summary, with patient consent.
+
+Important:
+
+The body map is for symptom localization and tracking. It must not diagnose conditions.
+
+Do not substitute a static decorative image for a genuinely interactive feature.
+
+First inspect suitable libraries, model formats, licenses and browser/mobile compatibility before implementation.
+
+## MODULE 6 — Medical Report Upload and OCR
+
+Users should be able to upload supported medical reports.
+
+Target functionality:
+
+- PDF upload.
+- Image upload.
+- File validation.
+- OCR/text extraction.
+- Structured medical marker extraction.
+- Reference range identification.
+- Abnormal value highlighting.
+- Historical report comparison.
+- Plain-language explanations.
+- Report history.
+
+Preserve the existing report parser and its marker definitions.
+
+Medical data requirements:
+
+- Never invent missing lab values.
+- Clearly distinguish extracted values from AI-generated explanations.
+- Preserve units and reference ranges.
+- Handle extraction uncertainty.
+- Ask users to verify unclear readings.
+- Do not diagnose based solely on a lab value.
+
+## MODULE 7 — AI Health Companion
+
+Use the existing Gemini integration where possible.
+
+The AI companion should:
+
+- Answer general women's health questions.
+- Explain menstrual health concepts.
+- Explain medical reports in understandable language.
+- Summarize health trends.
+- Explain symptom patterns cautiously.
+- Provide general wellness education.
+- Help prepare questions for doctors.
+- Provide relevant source-backed information where possible.
+
+The AI should use only authorized user data.
+
+Implement:
+
+- Structured prompts.
+- Context retrieval.
+- Controlled tool/function calling.
+- Input validation.
+- Output validation.
+- Medical safety filters.
+- User-data access restrictions.
+- Rate limits.
+- Logging and error handling.
+- Clear AI limitations.
+
+The AI must not:
+
+- Claim a definitive diagnosis.
+- Prescribe medication or treatment independently.
+- Override emergency guidance.
+- Make unsupported claims.
+- Fabricate citations or medical evidence.
+
+## MODULE 8 — Medical Safety and Red-Flag System
+
+Preserve and improve the existing deterministic red-flag safety layer.
+
+Required design:
+
+1. Receive user input.
+2. Validate and normalize it.
+3. Run clinically reviewed safety rules.
+4. Identify potentially urgent patterns.
+5. Prioritize appropriate safety guidance.
+6. Allow AI to explain the guidance without overriding the rules.
+7. Provide appropriate care-seeking recommendations.
+8. Log relevant events securely.
+
+Important:
+
+- Rules must be reviewed by qualified medical professionals.
+- Use clinically appropriate sources.
+- Avoid unsupported diagnostic scoring.
+- Make uncertainty clear.
+- Do not delay urgent-care guidance while waiting for an AI response.
+
+The system is decision support and health education, not a medical diagnosis engine.
+
+## MODULE 9 — Ayurveda and Traditional Wellness
+
+Preserve existing Ayurveda-related components.
+
+Build a structured knowledge base containing:
+
+- Traditional wellness information.
+- Food and lifestyle guidance.
+- Traditional practices.
+- Source references.
+- Evidence classification.
+- Safety considerations.
+
+Clearly distinguish:
+
+- Traditional knowledge.
+- Evidence-supported health information.
+- Limited or uncertain evidence.
+- Practices that may be unsuitable or unsafe.
+
+Never present traditional remedies as proven treatments without evidence.
+
+## MODULE 10 — Community and Anonymous Support
+
+Develop a safe community experience.
+
+Potential features:
+
+- Anonymous/pseudonymous discussions.
+- Topic-based groups.
+- Menstrual health discussions.
+- Wellness discussions.
+- Peer support.
+- Moderation and reporting.
+- Spam protection.
+- Abuse prevention.
+- Privacy controls.
+
+Do not expose real identities or private health records.
+
+## MODULE 11 — Care Finder
+
+Build a nearby healthcare discovery feature.
+
+Target providers:
+
+- Hospitals.
+- Gynecologists.
+- Clinics.
+- Emergency departments.
+- Diagnostic centers, where appropriate.
+
+Target capabilities:
+
+- Location permission.
+- Nearby healthcare providers.
+- Distance.
+- Contact details.
+- Directions.
+- Opening hours where available.
+- Booking links where available.
+- Emergency care discovery.
+
+Use reliable external data sources or suitable provider integrations.
+
+Do not invent clinics, doctors, ratings, opening hours or availability.
+
+Make location permission optional and explain why it is needed.
+
+## MODULE 12 — Doctor Portal and Patient Sharing
+
+Build a clinician-facing portal.
+
+Potential functionality:
+
+- Doctor login.
+- Doctor profile.
+- Patient access through an explicit consent process.
+- Patient health timeline.
+- Last-week and last-month trends.
+- Cycle history.
+- Symptom history.
+- Severity trends.
+- Medical report summaries.
+- Body-map symptom locations.
+- AI-generated appointment summary.
+- Clinician notes where authorized.
+
+Privacy requirements:
+
+- Explicit patient consent.
+- Scoped access.
+- Time-limited sharing.
+- Revocable access.
+- Authentication and role-based authorization.
+- Access audit logs.
+- No unrestricted browsing of patient records.
+- No automatic disclosure of patient data.
+
+Doctors should only see records the patient has explicitly authorized them to access.
+
+## MODULE 13 — Notifications and Reminders
+
+Support:
+
+- Period reminders.
+- Medication reminders where users configure them.
+- Appointment reminders.
+- Logging reminders.
+- User-defined wellness reminders.
+
+Allow users to configure and disable notifications.
+
+Avoid intrusive or excessive notifications.
+
+## MODULE 14 — Subscription and Payments
+
+The product should support:
+
+**Free plan — ₹0**
+
+- Basic health tracking.
+- Basic dashboard.
+- Essential health history.
+- Basic educational guidance.
+
+**Premium plan**
+
+- Advanced health analytics.
+- Additional AI assistance.
+- More advanced report insights.
+- Additional wellness guidance.
+
+**Elite plan**
+
+- Additional premium capabilities.
+- Mentor/guide access.
+- Potential consultation-related features, subject to the actual service model.
+
+The existing subscription UI reportedly displays Basic ₹99, Premium ₹199 and Elite ₹299. These are existing UI values from the audit, not final approved commercial pricing.
+
+Required work:
+
+- Decide and document final plan names, pricing and benefits.
+- Build backend subscription management.
+- Implement secure payment provider integration if paid subscriptions are approved.
+- Support zero-cost free-plan activation without requiring a real payment transaction.
+- Verify payment webhooks.
+- Handle failed payments and renewals.
+- Enforce premium entitlements on the backend, not just by hiding frontend UI.
+
+Do not claim payment integration is complete until real sandbox and production verification has been performed.
+
+---
+
+# 6. DEVELOPMENT ROADMAP AND PRIORITIES
+
+Work in phases. Do not implement every feature in one massive change.
+
+## PHASE 0 — Repository Verification and Baseline
+
+First:
+
+- Inspect the current Git branch and working tree.
+- Inspect the actual folder structure.
+- Review package.json files.
+- Inspect environment variable configuration.
+- Inspect database schema and migrations.
+- Inspect API routes and frontend API consumers.
+- Inspect authentication flows.
+- Inspect current test coverage.
+- Run backend tests.
+- Run frontend TypeScript checks.
+- Run frontend production build.
+- Identify the current working and broken features.
+
+Output a current-state report.
+
+Do not change files during the initial audit.
+
+## PHASE 1 — Stabilization and Critical Bug Fixes
+
+This is the immediate next priority.
+
+Tasks:
+
+1. Fix anonymous-chat JWT import and verification sequencing.
+2. Standardize the symptom logging contract.
+3. Consolidate authentication middleware and route contracts.
+4. Remove unsafe fallback identity behavior.
+5. Ensure production JWT secrets are mandatory.
+6. Audit the duplicate Next.js API routes.
+7. Identify mock-store usage.
+8. Add regression tests.
+9. Verify real database persistence.
+10. Run backend tests and frontend production build.
+
+Do not delete potentially obsolete files without confirming that they have no active consumers.
+
+Do not introduce new product features in this phase.
+
+**Phase 1A prompt has already been prepared in the previous conversation. However, implementation completion has not been verified.**
+
+## PHASE 2 — Unified API and Data Persistence
+
+After Phase 1 is verified:
+
+- Establish one authoritative backend API architecture.
+- Migrate frontend API consumers.
+- Remove accidental mock-data dependencies.
+- Standardize request/response contracts.
+- Add shared validation schemas where appropriate.
+- Ensure PostgreSQL persistence.
+- Add pagination and error handling.
+- Ensure user-level data isolation.
+- Add API documentation.
+- Test all major user flows.
+
+## PHASE 3 — Core Health Experience
+
+- Stabilize the dashboard.
+- Complete cycle tracking.
+- Complete symptom logging.
+- Complete mood, sleep, hydration and activity tracking.
+- Complete historical trends.
+- Verify date and timezone behavior.
+- Add editable records.
+- Ensure consistent data persistence.
+
+## PHASE 4 — Interactive 3D Body Map
+
+- Evaluate appropriate 3D libraries and model assets.
+- Implement anatomy views.
+- Implement region selection.
+- Capture structured symptom information.
+- Save it to PostgreSQL.
+- Display it in user history.
+- Integrate it into authorized AI context.
+- Add tests and accessibility support.
+
+## PHASE 5 — AI Companion and Medical Safety
+
+- Complete AI tool implementations.
+- Improve context retrieval.
+- Add controlled function calling.
+- Preserve deterministic safety checks.
+- Add evidence/source handling.
+- Add report-aware explanations.
+- Add safety regression tests.
+- Conduct medical content review.
+
+## PHASE 6 — Medical Reports and OCR
+
+- Complete upload workflow.
+- Complete OCR extraction.
+- Improve structured marker extraction.
+- Validate units and reference ranges.
+- Add report history.
+- Add historical comparison.
+- Add uncertainty and verification UI.
+
+## PHASE 7 — Authentication Expansion and Subscription
+
+- Phone OTP.
+- Google sign-in.
+- Account recovery.
+- Free-plan activation.
+- Premium subscription infrastructure.
+- Payment integration after provider and pricing decisions.
+- Entitlement enforcement.
+
+## PHASE 8 — Community and Notifications
+
+- Community frontend.
+- Moderation.
+- Anonymous identity protection.
+- User reporting.
+- Reminder management.
+- Notification preferences.
+
+## PHASE 9 — Care Finder and Doctor Ecosystem
+
+- Nearby provider discovery.
+- Location permissions.
+- Provider details and directions.
+- Doctor authentication.
+- Patient consent.
+- Time-limited sharing.
+- Clinician dashboard.
+- Patient appointment summary.
+
+## PHASE 10 — Mobile, Security and Production Readiness
+
+- Audit Flutter application.
+- Align mobile API contracts.
+- Complete mobile authentication.
+- Test responsive web behavior.
+- Security testing.
+- Performance testing.
+- Accessibility.
+- Logging and monitoring.
+- Backup and recovery.
+- Deployment configuration.
+- Privacy and legal review.
+- Production acceptance testing.
+
+---
+
+# 7. STRICT DEVELOPMENT RULES
+
+These rules are mandatory.
+
+### Rule 1 — Never assume the implementation state
+
+Before suggesting a change, inspect the relevant files or ask Google AI Studio for an audit.
+
+A feature described in this prompt is a target requirement, not proof that it exists.
+
+### Rule 2 — Do not rebuild the project
+
+Preserve the existing codebase.
+
+Do not replace working components merely because a new implementation seems cleaner.
+
+### Rule 3 — No unnecessary technology migration
+
+Continue with:
+
+- Next.js.
+- React.
+- TypeScript.
+- Express.
+- PostgreSQL.
+- Prisma.
+- Existing Gemini integration.
+
+Do not introduce a new framework, database or architecture without justification.
+
+### Rule 4 — One phase at a time
+
+Do not combine unrelated phases into one large implementation prompt.
+
+Complete, test and review one phase before moving to the next.
+
+### Rule 5 — Always inspect before modifying
+
+For each implementation task:
+
+1. Inspect relevant files.
+2. Understand current behavior.
+3. Identify root cause.
+4. Define the intended change.
+5. Make minimal targeted modifications.
+6. Add or update tests.
+7. Run verification.
+8. Review the Git diff.
+9. Report unresolved issues.
+
+### Rule 6 — Protect user data and security
+
+Never:
+
+- Commit API keys.
+- Expose secrets.
+- Hardcode user identities.
+- Trust arbitrary user IDs from the frontend.
+- Allow AI to bypass authorization.
+- Expose private health records.
+- Store sensitive credentials in plaintext.
+- Claim security compliance without evidence.
+
+### Rule 7 — Preserve medical safety
+
+All medical-facing features must be cautious, transparent and evidence-aware.
+
+The platform provides education and decision support, not a substitute for a healthcare professional.
+
+### Rule 8 — Avoid unnecessary dependencies
+
+Before installing a package:
+
+- Check whether an equivalent package is already installed.
+- Verify version compatibility.
+- Explain why it is necessary.
+- Avoid upgrading unrelated dependencies.
+
+### Rule 9 — Do not delete files casually
+
+A file that appears unused may still be required by a route, build, test or mobile component.
+
+Search references before removing it.
+
+### Rule 10 — Do not fabricate test results
+
+Only report tests that were actually run.
+
+Distinguish:
+
+- Implemented.
+- Partially implemented.
+- Tested.
+- Not tested.
+- Blocked.
+- Pending.
+
+### Rule 11 — Maintain documentation
+
+Update documentation when architecture, API contracts, database schemas or deployment processes change.
+
+### Rule 12 — Maintain a progress ledger
+
+After every completed phase, update:
+
+- Completed tasks.
+- Changed files.
+- New database migrations.
+- API changes.
+- Tests executed.
+- Test results.
+- Known bugs.
+- Outstanding tasks.
+- Next recommended phase.
+
+Never mark a phase complete based only on code generation.
+
+---
+
+# 8. HOW YOU MUST GUIDE ME
+
+I am not asking you to simply generate code. I want you to guide the development like a senior technical mentor.
+
+I will share:
+
+- Google AI Studio implementation reports.
+- Error messages.
+- Screenshots.
+- Code snippets.
+- Repository audit results.
+- Test output.
+- Architecture questions.
+
+You must review the evidence and tell me what it means.
+
+For each task, follow this workflow:
+
+**STEP 1 — Understand**
+
+Explain the current situation and the problem.
+
+**STEP 2 — Decide**
+
+Recommend the technically correct approach and explain why.
+
+**STEP 3 — Prepare**
+
+Create a detailed, ready-to-paste Google AI Studio prompt.
+
+The prompt must specify:
+
+- Exact objective.
+- Relevant files to inspect.
+- Expected behavior.
+- Implementation instructions.
+- Constraints.
+- Security considerations.
+- Tests required.
+- Acceptance criteria.
+- Required final report.
+
+**STEP 4 — Review**
+
+When I share the AI Studio response, inspect whether it actually completed the task.
+
+Check for:
+
+- Incorrect assumptions.
+- Missing implementation.
+- Unnecessary changes.
+- Broken API contracts.
+- Database problems.
+- Security problems.
+- Missing tests.
+- Incomplete functionality.
+
+**STEP 5 — Continue**
+
+Only after verification should we move to the next phase.
+
+---
+
+# 9. REQUIRED FORMAT FOR GOOGLE AI STUDIO PROMPTS
+
+Whenever I ask you to prepare a coding prompt, use this structure:
+
+1. Project context.
+2. Exact task objective.
+3. Current known architecture.
+4. Files and modules to inspect.
+5. Root cause or problem statement.
+6. Required implementation.
+7. Expected frontend behavior.
+8. Expected backend behavior.
+9. Database requirements.
+10. Security and privacy requirements.
+11. Constraints and things not to change.
+12. Testing and verification.
+13. Acceptance criteria.
+14. Final implementation report.
+
+The prompt must be specific enough that Google AI Studio does not unnecessarily rebuild, redesign or alter unrelated modules.
+
+For a complex phase, split the work into smaller implementation tasks.
+
+---
+
+# 10. EXPECTED FINAL PRODUCT
+
+The long-term target is a coherent application with the following connected modules:
+
+- Secure user authentication.
+- Personalized health dashboard.
+- Menstrual cycle tracking.
+- Comprehensive symptom logging.
+- Interactive 3D anatomical symptom localization.
+- Medical report upload and OCR.
+- AI health companion.
+- Deterministic medical safety system.
+- Traditional wellness knowledge base.
+- Anonymous community support.
+- Nearby healthcare discovery.
+- Doctor portal with patient-controlled data sharing.
+- Notifications and reminders.
+- Free and premium subscription plans.
+- Responsive web application.
+- Mobile application.
+- Secure PostgreSQL data persistence.
+
+These modules must work together through a well-defined architecture rather than existing as disconnected demo pages.
+
+---
+
+# 11. WHAT TO DO FIRST IN THIS NEW CHAT
+
+Do not immediately start implementing the entire product.
+
+First, acknowledge this handover and establish the current status.
+
+Then ask me to share the latest Google AI Studio Phase 1A implementation report if I have already run the prompt.
+
+If I have not run it, provide the Phase 1A prompt again after checking whether the current repository state still matches the audit.
+
+If a fresh audit is necessary, prepare a read-only repository inspection prompt.
+
+Your first priority is to determine:
+
+1. Has Phase 1A actually been implemented?
+2. Are the anonymous chat JWT issue and symptom contract mismatch fixed?
+3. Has authentication been consolidated safely?
+4. Is PostgreSQL the actual source of truth for frontend health data?
+5. Are backend tests passing?
+6. Is the frontend production build passing?
+7. Are there any new regressions?
+8. What is the exact next implementation phase?
+
+Do not claim that anything is complete without evidence.
+
+---
+
+# 12. FINAL INSTRUCTION
+
+Act as the technical owner and mentor for SAKHI throughout this development journey.
+
+Be practical, precise, critical and technically honest.
+
+Prioritize a working, secure and maintainable product over a large number of unfinished features.
+
+Preserve the existing project wherever possible.
+
+Do not overwhelm Google AI Studio with the entire roadmap in one implementation request.
+
+Work in small, verifiable phases, maintain a clear progress ledger and make sure every new feature integrates properly with the existing system.
+
+**Our immediate priority is to verify and complete Phase 1A stabilization before expanding the product.**

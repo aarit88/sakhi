@@ -1,304 +1,184 @@
-"use client"
+'use client';
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Menu, X, Heart, Dumbbell, Utensils, Activity, Sparkles, Home, MessageCircle, FileText, LogOut } from "lucide-react"
-import { useMagneticEffect } from "@/hooks/use-advanced-animations"
-import { useAuth } from "@/contexts/AuthContext"
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  Activity,
+  Box,
+  CalendarCheck2,
+  FileText,
+  Heart,
+  Leaf,
+  LogOut,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Stethoscope,
+  User,
+  Users,
+  X,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+
+const NAV_LINKS = [
+  { href: '/', label: 'Dashboard', icon: Activity },
+  { href: '/body-map', label: '3D Body Map', icon: Box },
+  { href: '/clinical-reports', label: 'Reports', icon: FileText },
+  { href: '/ayurveda', label: 'Ayurveda', icon: Leaf },
+  { href: '/community', label: 'Community', icon: Users },
+  { href: '/care-finder', label: 'Care Finder', icon: MapPin },
+  { href: '/doctor-portal', label: 'Doctor Portal', icon: Stethoscope },
+  { href: '/workspace', label: 'Workspace', icon: CalendarCheck2 },
+];
 
 export function Navigation() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [activeSection, setActiveSection] = useState("")
-  const [scrollPercent, setScrollPercent] = useState(0)
-
-  const router = useRouter()
-  const { isAuthenticated, logout, user } = useAuth()
-
-  const logoRef = useRef<HTMLDivElement>(null)
-  
-  const { elementRef: signupCtaRef, transform: signupCtaTransform, handlers: signupCtaHandlers } =
-    useMagneticEffect<HTMLButtonElement>(0.15)
-
-  const navItems = [
-    { href: "#home", label: "Home", icon: Home },
-    { href: "#devices", label: "Devices", icon: Heart },
-    { href: "#exercise", label: "Exercise", icon: Dumbbell },
-    { href: "#diet", label: "Nutrition", icon: Utensils },
-    { href: "#health", label: "Health", icon: Sparkles },
-    { href: "#dashboard", label: "Dashboard", icon: Activity },
-  ]
-
-  const toolItems = [
-    { href: "/anonymous-chat", label: "Chat", icon: MessageCircle },
-    { href: "/clinical-reports", label: "Reports", icon: FileText },
-  ]
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50)
-
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      const scrolledPercent = (window.scrollY / docHeight) * 100
-      setScrollPercent(Math.min(100, scrolledPercent))
-
-      const sections = navItems.map((item) => item.href.substring(1))
-      const currentSection = sections.find((section) => {
-        const element = document.getElementById(section)
-        if (element) {
-          const rect = element.getBoundingClientRect()
-          return rect.top <= 100 && rect.bottom >= 100
-        }
-        return false
-      })
-
-      if (currentSection) {
-        setActiveSection(`#${currentSection}`)
-      } else if (window.scrollY < 10) {
-        setActiveSection("#home")
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    handleScroll()
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  const handleNavClick = (href: string) => {
-    if (href.startsWith("/")) {
-      router.push(href)
-      setIsOpen(false)
-      return
-    }
-    const element = document.querySelector(href)
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" })
-      setIsOpen(false)
-    }
-  }
+  const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
-    <>
-      {/* Top Navbar */}
-      <nav
-        className={`fixed top-0 w-full z-50 transition-all duration-500 ${
-          scrolled ? "glass-pink border-b border-pink-200/30 backdrop-blur-xl shadow-lg" : "bg-transparent"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div
-              ref={logoRef}
-              className="flex items-center space-x-2 group cursor-pointer magnetic-container"
-              onClick={() => router.push("/")}
-            >
-              <div className="relative w-10 h-10 bg-gradient-to-br from-pink-400 to-rose-500 animate-morph-blob-1 flex items-center justify-center group-hover:animate-glow-pulse transition-all duration-300">
-                <Heart className="w-5 h-5 text-white animate-pulse" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 bg-clip-text text-transparent group-hover:animate-gradient-shift animate-text-reveal">
-                SAKHI
-              </span>
-            </div>
+    <header className="sticky top-0 z-50 w-full border-b border-rose-100 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-sm">
+            <Heart className="h-5 w-5" />
+          </div>
+          <span className="text-xl font-bold tracking-tight text-slate-900">
+            SAKHI
+          </span>
+        </Link>
 
-            {/* Desktop nav */}
-            <div className="hidden md:flex items-center space-x-1">
-              {navItems.map((item, index) => {
-                const IconComponent = item.icon
-                const isActive = activeSection === item.href
-                return (
-                  <button
-                    key={item.href}
-                    onClick={() => handleNavClick(item.href)}
-                    className={`relative flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-300 group ${
-                      isActive
-                        ? "text-pink-600 bg-pink-100 shadow-md"
-                        : "text-gray-700 hover:text-pink-500 hover:bg-pink-50"
-                    }`}
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                )
-              })}
+        {/* Desktop Nav */}
+        <nav className="hidden lg:flex items-center gap-1">
+          {NAV_LINKS.map((item) => {
+            const Icon = item.icon;
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap transition-colors ${
+                  active
+                    ? 'bg-rose-50 text-rose-700'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {item.label}
+              </Link>
+            );
+          })}
+          <Link
+            href="/anonymous-chat"
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap transition-colors ${
+              pathname === '/anonymous-chat'
+                ? 'bg-teal-50 text-teal-700'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+            Anon Chat
+          </Link>
+        </nav>
 
-              {toolItems.map((item) => {
-                const IconComponent = item.icon
-                return (
-                  <button
-                    key={item.href}
-                    onClick={() => handleNavClick(item.href)}
-                    className="relative flex items-center space-x-2 rounded-xl px-4 py-2 text-gray-700 transition-all duration-300 hover:bg-teal-50 hover:text-teal-600"
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                )
-              })}
-
-              {/* Login + Signup or Logout */}
-              <div className="flex space-x-3 ml-4">
-                {isAuthenticated ? (
-                  <Button
-                    variant="outline"
-                    onClick={logout}
-                    className="text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push("/login")}
-                      className="text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
-                    >
-                      Login
-                    </Button>
-                    
-                    <Button
-                      ref={signupCtaRef}
-                      onClick={() => router.push("/signup")}
-                      className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg transition-all duration-300"
-                      style={{ transform: `translate(${signupCtaTransform.x}px, ${signupCtaTransform.y}px)` }}
-                      {...signupCtaHandlers}
-                    >
-                      Signup
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden">
+        {/* Right User Actions */}
+        <div className="hidden lg:flex items-center gap-2 shrink-0">
+          {isAuthenticated ? (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsOpen(!isOpen)}
-                className="hover:bg-pink-50 transition-all duration-300"
+                onClick={() => router.push('/profile')}
+                className="text-slate-700 hover:bg-slate-100"
               >
-                {isOpen ? <X className="w-6 h-6 text-pink-500" /> : <Menu className="w-6 h-6 text-pink-500" />}
+                <User className="h-4 w-4 mr-1.5 text-rose-600" />
+                <span className="max-w-[110px] truncate text-xs font-medium">
+                  {user?.name || user?.email?.split('@')[0] || 'Profile'}
+                </span>
               </Button>
-            </div>
-          </div>
-
-          {/* Mobile menu */}
-          {isOpen && (
-            <div className="md:hidden">
-              <div className="px-2 pt-2 pb-3 space-y-1 glass-pink rounded-2xl mt-2 border border-pink-200/50 shadow-xl">
-                {navItems.map((item, index) => {
-                  const IconComponent = item.icon
-                  const isActive = activeSection === item.href
-                  return (
-                    <button
-                      key={item.href}
-                      onClick={() => handleNavClick(item.href)}
-                      className={`w-full flex items-center space-x-3 px-3 py-3 rounded-xl transition-all duration-300 ${
-                        isActive
-                          ? "text-pink-600 bg-pink-100/80 shadow-sm"
-                          : "text-gray-700 hover:text-pink-500 hover:bg-pink-50/80"
-                      }`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      <IconComponent className="w-5 h-5" />
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  )
-                })}
-
-                {toolItems.map((item) => {
-                  const IconComponent = item.icon
-                  return (
-                    <button
-                      key={item.href}
-                      onClick={() => handleNavClick(item.href)}
-                      className="w-full flex items-center space-x-3 px-3 py-3 rounded-xl text-gray-700 transition-all duration-300 hover:bg-teal-50/80 hover:text-teal-600"
-                    >
-                      <IconComponent className="w-5 h-5" />
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  )
-                })}
-                
-                {/* Mobile Login + Signup or Logout */}
-                <div className="flex flex-col space-y-2 pt-4">
-                  {isAuthenticated ? (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setIsOpen(false)
-                        logout()
-                      }}
-                      className="w-full text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </Button>
-                  ) : (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setIsOpen(false)
-                          router.push("/login")
-                        }}
-                        className="w-full text-pink-600 border-pink-400 hover:bg-pink-50 transition-all duration-300"
-                      >
-                        Login
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          setIsOpen(false)
-                          router.push("/signup")
-                        }}
-                        className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-lg"
-                      >
-                        Signup
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="border-rose-200 text-rose-700 hover:bg-rose-50 text-xs"
+              >
+                <LogOut className="h-3.5 w-3.5 mr-1" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/login')}>
+                Sign In
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => router.push('/signup')}
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+              >
+                Sign Up
+              </Button>
+            </>
           )}
         </div>
-      </nav>
 
-      {/* Right side floating nav dots */}
-      <div className="fixed right-6 top-1/2 transform -translate-y-1/2 z-40 hidden lg:block">
-        <div className="flex flex-col space-y-3">
-          {navItems.map((item) => {
-            const isActive = activeSection === item.href
+        {/* Mobile menu toggle */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="lg:hidden rounded-lg p-2 text-slate-700 hover:bg-slate-100"
+          aria-label="Toggle navigation menu"
+        >
+          {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
+
+      {/* Mobile Dropdown */}
+      {isOpen && (
+        <div className="lg:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-1">
+          {[...NAV_LINKS, { href: '/anonymous-chat', label: 'Anonymous Chat', icon: MessageCircle }].map((item) => {
+            const Icon = item.icon;
+            const active = pathname === item.href;
             return (
-              <button
+              <Link
                 key={item.href}
-                onClick={() => handleNavClick(item.href)}
-                className="p-2 group flex items-center justify-center"
-                title={item.label}
-                aria-label={`Scroll to ${item.label}`}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                  active ? 'bg-rose-50 text-rose-700' : 'text-slate-700 hover:bg-slate-100'
+                }`}
               >
-                <div className={`relative w-3 h-3 rounded-full transition-all duration-300 ${
-                  isActive ? "bg-pink-500 shadow-lg scale-125" : "bg-gray-300 group-hover:bg-pink-400"
-                }`}>
-                  {isActive && <div className="absolute inset-0 rounded-full bg-pink-500 animate-ping opacity-30" />}
-                </div>
-              </button>
-            )
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
           })}
+          <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+            {isAuthenticated ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => { setIsOpen(false); router.push('/profile'); }}>
+                  <User className="h-4 w-4 mr-2" /> Profile & Consents
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setIsOpen(false); logout(); }} className="text-rose-700 border-rose-200">
+                  <LogOut className="h-4 w-4 mr-2" /> Logout
+                </Button>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setIsOpen(false); router.push('/login'); }}>
+                  Sign In
+                </Button>
+                <Button size="sm" onClick={() => { setIsOpen(false); router.push('/signup'); }} className="bg-rose-600 text-white">
+                  Sign Up
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Scroll progress bar */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-pink-100 z-50">
-        <div
-          className="h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-300"
-          style={{ width: `${scrollPercent}%` }}
-        />
-      </div>
-    </>
-  )
+      )}
+    </header>
+  );
 }

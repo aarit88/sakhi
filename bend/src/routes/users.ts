@@ -5,11 +5,11 @@ import { z } from "zod"
 import prisma from "../prisma"
 import dotenv from "dotenv"
 import { authMiddleware, AuthRequest } from "../middleware/auth"
+import { getJwtSecret } from "../middleware/authMiddleware"
 
 dotenv.config()
 
 const router = Router()
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret"
 
 // Validation schemas
 const signupSchema = z.object({
@@ -46,7 +46,7 @@ router.post("/signup", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "7d" }
     )
 
@@ -83,7 +83,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "7d" }
     )
 

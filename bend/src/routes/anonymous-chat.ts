@@ -2,7 +2,7 @@ import { Router } from "express"
 import jwt from "jsonwebtoken"
 import { z } from "zod"
 import prisma from "../prisma"
-import { requireAuth, AuthRequest } from "../middleware/authMiddleware"
+import { requireAuth, AuthRequest, getJwtSecret } from "../middleware/authMiddleware"
 import { createSakhiAgentReply } from "../services/sakhiAgent"
 
 const router = Router()
@@ -34,8 +34,7 @@ router.post("/sessions", async (req, res) => {
 
     if (token) {
       try {
-        const secret = process.env.JWT_SECRET || "dev_secret"
-        const decoded: any = jwt.verify(token, secret)
+        const decoded: any = jwt.verify(token, getJwtSecret())
         if (decoded?.userId) {
           userId = decoded.userId
         }

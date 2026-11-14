@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/components/*": [
         "components/*"
       ],
       "@/*": [
         "./*"
+      ],
+      "@db/*": [
+        "../src/db/*"
       ]
     },
     "skipLibCheck": true,

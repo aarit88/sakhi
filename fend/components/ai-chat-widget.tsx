@@ -1,176 +1,181 @@
-"use client"
+'use client';
 
-import { useState, useRef, useEffect } from "react"
-import { MessageCircle, X, ArrowRight, Bot } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { apiClient } from "@/lib/api-client"
+import { useState, useRef, useEffect } from 'react';
+import { AlertTriangle, ArrowRight, Bot, ShieldCheck, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/contexts/AuthContext';
 
 type AIMessageObj = {
-  role: "user" | "assistant"
-  text?: string
-  urgent?: boolean
-  sections?: { title: string; content: string }[]
-  traditionalGuidance?: { enabled: boolean; disclaimer: string; suggestions: string[] }
-}
+  role: 'user' | 'assistant';
+  text: string;
+  urgent?: boolean;
+  citations?: string[];
+};
 
 export function AiChatWidget() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [input, setInput] = useState("")
+  const { isAuthenticated } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState('');
   const [messages, setMessages] = useState<AIMessageObj[]>([
-    { role: "assistant", text: "Hi, I'm SAKHI, your personalized wellness companion. How can I help you today?" }
-  ])
-  const [loading, setLoading] = useState(false)
-  const [conversationId, setConversationId] = useState<string | undefined>(undefined)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    {
+      role: 'assistant',
+      text: "Hi, I'm SAKHI, your personalized wellness companion. Ask me about cycle patterns, symptoms, Ayurveda guidance, or your uploaded lab reports.",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated) return;
+    apiClient
+      .get('/api/ai/chat')
+      .then((res) => {
+        if (res?.success && Array.isArray(res.messages) && res.messages.length > 0) {
+          setMessages(
+            res.messages.map((m: any) => ({
+              role: m.role === 'assistant' ? 'assistant' : 'user',
+              text: m.content,
+              urgent: Boolean(m.safetyFlagged),
+              citations: m.citations || [],
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [isOpen, isAuthenticated]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return
-    const text = input.trim()
-    
-    setMessages(prev => [...prev, { role: "user", text }])
-    setInput("")
-    setLoading(true)
+    if (!input.trim() || loading) return;
+    const text = input.trim();
+
+    setMessages((prev) => [...prev, { role: 'user', text }]);
+    setInput('');
+    setLoading(true);
 
     try {
-      const response = await apiClient.post("/api/ai/chat", {
-        message: text,
-        conversationId
-      })
-
-      if (response.success) {
-        setMessages(prev => [...prev, { 
-          role: "assistant", 
-          text: response.data.message,
-          urgent: response.data.urgent,
-          sections: response.data.sections,
-          traditionalGuidance: response.data.traditionalGuidance
-        }])
-        if (response.data.conversationId) {
-          setConversationId(response.data.conversationId)
-        }
+      const response = await apiClient.post('/api/ai/chat', { message: text });
+      if (response?.success) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: response.reply,
+            urgent: Boolean(response.safetyTriggered),
+            citations: response.citations || [],
+          },
+        ]);
       } else {
-        setMessages(prev => [...prev, { role: "assistant", text: "Sorry, I am having trouble connecting to the server." }])
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', text: response?.message || 'Unable to generate a response right now.' },
+        ]);
       }
-    } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", text: "A network error occurred." }])
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text:
+            err?.message?.includes('sign in')
+              ? 'Please sign in to chat with your personal SAKHI companion, or try Anonymous Chat (/anonymous-chat) without signing in.'
+              : err?.message || 'Could not reach the AI companion service.',
+        },
+      ]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <>
-      {/* Floating Action Button */}
       {!isOpen && (
         <button
+          type="button"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:scale-105 transition-transform"
+          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-xl transition-transform hover:scale-105"
+          aria-label="Open SAKHI AI Companion"
         >
-          <Bot className="w-8 h-8" />
+          <Bot className="h-7 w-7" />
         </button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[350px] max-w-[90vw] h-[500px] bg-white border border-pink-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-3 flex items-center justify-between shadow-md">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                <Bot className="w-5 h-5 text-pink-500" />
+        <div className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[360px] max-w-[92vw] flex-col overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-2xl">
+          <div className="flex items-center justify-between bg-gradient-to-r from-rose-500 to-pink-600 px-4 py-3 text-white">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-rose-600">
+                <Bot className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">SAKHI</h3>
-                <p className="text-[10px] text-pink-100">Personalized Wellness AI</p>
+                <h3 className="text-sm font-bold leading-tight">SAKHI Companion</h3>
+                <p className="text-[11px] text-rose-100">Educational Guidance Only</p>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white">
-              <X className="w-5 h-5" />
+            <button type="button" onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white">
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto bg-pink-50/30">
+          <div className="flex-1 space-y-3 overflow-y-auto bg-rose-50/30 px-4 py-4">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`rounded-2xl px-4 py-2 text-sm max-w-[85%] ${
-                  msg.role === "user" 
-                    ? "bg-pink-500 text-white rounded-br-sm" 
-                    : msg.urgent 
-                      ? "bg-red-100 text-red-900 border border-red-200 rounded-bl-sm font-medium"
-                      : "bg-white text-gray-800 border border-pink-100 rounded-bl-sm shadow-sm"
-                }`}>
-                  <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                  
-                  {msg.sections && msg.sections.map((sec, i) => (
-                    <div key={i} className="mt-2">
-                      <strong className="block text-[13px] text-pink-700">{sec.title}</strong>
-                      <span className="text-gray-700 text-xs">{sec.content}</span>
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[88%] rounded-xl px-3.5 py-2.5 text-sm ${
+                    msg.role === 'user'
+                      ? 'bg-rose-600 text-white'
+                      : msg.urgent
+                        ? 'border border-red-300 bg-red-50 text-red-950'
+                        : 'border border-rose-100 bg-white text-slate-800 shadow-sm'
+                  }`}
+                >
+                  {msg.urgent && (
+                    <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-red-700">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Urgent Medical Attention Guidance
                     </div>
-                  ))}
-
-                  {msg.traditionalGuidance?.enabled && (
-                    <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                      <div className="flex items-center space-x-1 mb-1">
-                        <span className="text-[10px] font-bold tracking-wider text-amber-700 uppercase">Traditional Lifestyle Guidance</span>
-                      </div>
-                      <ul className="list-disc list-inside text-xs text-amber-900 space-y-1 mb-2">
-                        {msg.traditionalGuidance.suggestions.map((sug, i) => (
-                          <li key={i}>{sug}</li>
-                        ))}
-                      </ul>
-                      <p className="text-[9px] text-amber-600 italic leading-tight">{msg.traditionalGuidance.disclaimer}</p>
+                  )}
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                  {msg.citations && msg.citations.length > 0 && (
+                    <div className="mt-2 border-t border-slate-100 pt-1.5 text-[11px] text-slate-500 flex items-start gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600 mt-0.5" />
+                      <span>Sources: {msg.citations.join(' · ')}</span>
                     </div>
                   )}
                 </div>
               </div>
             ))}
             {loading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-pink-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-pink-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                    <div className="w-2 h-2 bg-pink-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                    <div className="w-2 h-2 bg-pink-300 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
-                  </div>
-                </div>
-              </div>
+              <div className="text-xs text-slate-500 italic">SAKHI is reviewing your context...</div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
-          <div className="p-3 bg-white border-t border-pink-100">
-            <div className="flex items-center space-x-2">
+          <div className="border-t border-slate-100 bg-white p-3">
+            <div className="flex items-center gap-2">
               <input
-                className="flex-1 text-sm rounded-full border border-pink-200 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-300 transition-all bg-gray-50 hover:bg-white"
-                placeholder="Ask SAKHI anything..."
+                className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-rose-400 focus:bg-white"
+                placeholder="Ask SAKHI..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 disabled={loading}
               />
               <Button
                 size="icon"
-                className="w-10 h-10 bg-pink-500 hover:bg-pink-600 text-white rounded-full shadow-md disabled:opacity-50 transition-colors"
+                className="h-9 w-9 bg-rose-600 hover:bg-rose-700 text-white"
                 onClick={handleSend}
-                disabled={loading}
+                disabled={loading || !input.trim()}
               >
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
       )}
     </>
-  )
+  );
 }

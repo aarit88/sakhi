@@ -1,4 +1,4 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 
 export interface AuthUser {
   id: string
@@ -7,8 +7,12 @@ export interface AuthUser {
   role: string
 }
 
-// In-memory sessions mapped by opaque session IDs (no raw email in cookies)
-const sessionsStore = new Map<string, AuthUser>()
+// In-memory sessions mapped by opaque session IDs (globalThis-backed across dev HMR)
+const globalForAuth = globalThis as unknown as {
+  __sakhiSessionsStore?: Map<string, AuthUser>
+}
+const sessionsStore =
+  globalForAuth.__sakhiSessionsStore ?? (globalForAuth.__sakhiSessionsStore = new Map<string, AuthUser>())
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies()
@@ -23,11 +27,15 @@ export async function setAuthSession(user: AuthUser) {
   const sessionId = `sess_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`
   sessionsStore.set(sessionId, user)
 
+  const headerList = await headers()
+  const proto = headerList.get("x-forwarded-proto")
+  const isHttps = proto === "https" || process.env.NODE_ENV === "production"
+
   const cookieStore = await cookies()
   cookieStore.set("sakhi_session_id", sessionId, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: isHttps ? "none" : "lax",
+    secure: isHttps,
     path: "/",
     maxAge: 7 * 24 * 60 * 60,
   })

@@ -1,105 +1,103 @@
-import { type NextRequest, NextResponse } from "next/server"
-
-// Mock health data - In production, use a real database
-const healthData: Record<string, any> = {
-  userId: "user-001",
-  currentCycle: {
-    day: 14,
-    phase: "ovulation",
-    nextPeriod: "2024-01-15",
-    cycleLength: 28,
-  },
-  vitals: {
-    heartRate: 72,
-    bloodPressure: "120/80",
-    temperature: 98.6,
-    weight: 65.5,
-  },
-  symptoms: [
-    { date: "2024-01-01", type: "cramps", severity: "mild" },
-    { date: "2024-01-01", type: "mood", severity: "moderate" },
-    { date: "2024-01-02", type: "fatigue", severity: "low" },
-  ],
-  mood: [
-    { date: "2024-01-01", score: 7, notes: "Feeling good" },
-    { date: "2024-01-02", score: 8, notes: "Great energy" },
-  ],
-  sleep: [
-    { date: "2024-01-01", hours: 7.5, quality: 85 },
-    { date: "2024-01-02", hours: 8.2, quality: 92 },
-  ],
-  activity: [
-    { date: "2024-01-01", steps: 8432, calories: 2100 },
-    { date: "2024-01-02", steps: 9156, calories: 2250 },
-  ],
-  hydration: [
-    { date: "2024-01-01", intake: 2.1, target: 2.5 },
-    { date: "2024-01-02", intake: 2.4, target: 2.5 },
-  ],
-}
+import { NextRequest, NextResponse } from 'next/server';
+import { desc, eq } from 'drizzle-orm';
+import { db } from '@db/index.ts';
+import {
+  activityLogs,
+  bodyMapLogs,
+  hydrationLogs,
+  medicalReports,
+  moodLogs,
+  periodLogs,
+  sleepLogs,
+  symptomLogs,
+} from '@db/schema.ts';
+import { getAuthenticatedUser } from '@/lib/session';
+import { computeCycleInfo } from '@/lib/clinical/cycleUtils';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const type = searchParams.get("type")
-    const startDate = searchParams.get("startDate")
-    const endDate = searchParams.get("endDate")
-
-    let responseData = healthData
-
-    // Filter by type if specified
-    if (type && type !== "all") {
-      responseData = {
-        ...healthData,
-        [type]: healthData[type as keyof typeof healthData],
-      }
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
 
-    // In a real app, you would filter by date range here
+    const [periods, moods, sleeps, hydrations, activities, symptoms, bodyMaps, reports] =
+      await Promise.all([
+        db.select().from(periodLogs).where(eq(periodLogs.userId, user.id)).orderBy(desc(periodLogs.startDate)).limit(12),
+        db.select().from(moodLogs).where(eq(moodLogs.userId, user.id)).orderBy(desc(moodLogs.recordedAt)).limit(30),
+        db.select().from(sleepLogs).where(eq(sleepLogs.userId, user.id)).orderBy(desc(sleepLogs.recordedAt)).limit(30),
+        db.select().from(hydrationLogs).where(eq(hydrationLogs.userId, user.id)).orderBy(desc(hydrationLogs.recordedAt)).limit(30),
+        db.select().from(activityLogs).where(eq(activityLogs.userId, user.id)).orderBy(desc(activityLogs.recordedAt)).limit(30),
+        db.select().from(symptomLogs).where(eq(symptomLogs.userId, user.id)).orderBy(desc(symptomLogs.recordedAt)).limit(30),
+        db.select().from(bodyMapLogs).where(eq(bodyMapLogs.userId, user.id)).orderBy(desc(bodyMapLogs.recordedAt)).limit(20),
+        db.select().from(medicalReports).where(eq(medicalReports.userId, user.id)).orderBy(desc(medicalReports.reportDate)).limit(10),
+      ]);
 
-    return NextResponse.json({
-      success: true,
-      data: responseData,
-      timestamp: new Date().toISOString(),
-    })
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch health data" }, { status: 500 })
-  }
-}
+    const cycleInfo = computeCycleInfo(
+      periods.map((p) => new Date(p.startDate)),
+      user.cycleLengthAvg || 28
+    );
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { type, data } = body
+    const avgMood = moods.length
+      ? Number((moods.slice(0, 7).reduce((acc, m) => acc + m.score, 0) / Math.min(moods.length, 7)).toFixed(1))
+      : null;
+    const avgSleep = sleeps.length
+      ? Number((sleeps.slice(0, 7).reduce((acc, s) => acc + s.hours, 0) / Math.min(sleeps.length, 7)).toFixed(1))
+      : null;
 
-    if (!type || !data) {
-      return NextResponse.json({ success: false, error: "Type and data are required" }, { status: 400 })
-    }
+    const latestHydration = hydrations[0] ?? null;
+    const latestActivity = activities[0] ?? null;
 
-    // Add timestamp to the data
-    const timestampedData = {
-      ...data,
-      date: data.date || new Date().toISOString().split("T")[0],
-      timestamp: new Date().toISOString(),
-    }
-
-    // Add to the appropriate array
-    if (Array.isArray(healthData[type as keyof typeof healthData])) {
-      ;(healthData[type as keyof typeof healthData] as any[]).push(timestampedData)
+    const insights: string[] = [];
+    if (cycleInfo.day > 0) {
+      insights.push(
+        `Cycle Day ${cycleInfo.day} (${cycleInfo.phase}). ${cycleInfo.predictionNote}`
+      );
     } else {
-      // For non-array data like vitals or currentCycle
-      healthData[type as keyof typeof healthData] = {
-        ...healthData[type as keyof typeof healthData],
-        ...timestampedData,
-      }
+      insights.push('Log your recent period start date to unlock personalized cycle phase and fertile-window estimates.');
+    }
+    if (avgSleep !== null && avgSleep < 7) {
+      insights.push(`Your recent average sleep is ${avgSleep} hrs/night. Prioritizing 7–8 hrs can ease fatigue and hormonal mood swings.`);
+    }
+    if (bodyMaps.length > 0) {
+      const top = bodyMaps[0];
+      insights.push(`Latest body-map note: ${top.regionLabel} — ${top.symptom} (${top.severity}/10).`);
+    }
+    if (reports.length > 0) {
+      insights.push(`${reports.length} lab report${reports.length === 1 ? '' : 's'} stored and ready for side-by-side comparison or clinician sharing.`);
     }
 
     return NextResponse.json({
       success: true,
-      data: timestampedData,
-      message: `${type} data added successfully`,
-    })
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      cycleInfo,
+      overview: {
+        avgMood7d: avgMood,
+        avgSleep7d: avgSleep,
+        latestHydration: latestHydration ? { intake: latestHydration.intake, target: latestHydration.target } : null,
+        latestActivity: latestActivity ? { steps: latestActivity.steps, calories: latestActivity.calories } : null,
+        totalBodyMapLogs: bodyMaps.length,
+        totalReports: reports.length,
+      },
+      insights,
+      records: {
+        periods,
+        moods,
+        sleeps,
+        hydrations,
+        activities,
+        symptoms,
+        bodyMaps,
+        reports,
+      },
+    });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to add health data" }, { status: 500 })
+    console.error('Health dashboard error:', error);
+    return NextResponse.json({ message: 'Failed to load health summary' }, { status: 500 });
   }
 }

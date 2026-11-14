@@ -1,121 +1,147 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from 'next/server';
+import { desc, eq } from 'drizzle-orm';
+import { db } from '@db/index.ts';
+import { aiConversations, aiMessages } from '@db/schema.ts';
+import { checkRateLimit, getAuthenticatedUser } from '@/lib/session';
+import { evaluateRedFlags, logSafetyEvent } from '@/lib/clinical/safety';
+import { buildAuthorizedUserContext } from '@/lib/clinical/contextBuilder';
+import { generateGroundedSakhiResponse } from '@/lib/gemini';
 
-export async function POST(req: NextRequest) {
+export async function GET(request: NextRequest) {
+  const user = await getAuthenticatedUser(request);
+  if (!user) return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+
+  const convs = await db
+    .select()
+    .from(aiConversations)
+    .where(eq(aiConversations.userId, user.id))
+    .orderBy(desc(aiConversations.updatedAt))
+    .limit(1);
+
+  if (!convs[0]) return NextResponse.json({ success: true, messages: [] });
+
+  const messages = await db
+    .select()
+    .from(aiMessages)
+    .where(eq(aiMessages.conversationId, convs[0].id))
+    .orderBy(aiMessages.createdAt);
+
+  return NextResponse.json({
+    success: true,
+    conversationId: convs[0].id,
+    messages: messages.map((m) => ({
+      ...m,
+      citations: m.citationsJson ? JSON.parse(m.citationsJson) : [],
+    })),
+  });
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}))
-    const message: string = (body.message || "").trim().toLowerCase()
-    const conversationId: string = body.conversationId || `conv-${Date.now()}`
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to chat with your personal SAKHI companion.' }, { status: 401 });
+    }
 
-    // 1. Safety & Emergency red flags check
-    const isEmergency = /suicid|self[-\s]?harm|kill myself|chest pain|can't breathe|cannot breathe|faint|unconscious|heavy bleeding|soak.*pad|severe.*pain/i.test(message)
-    if (isEmergency) {
+    const rl = checkRateLimit(`ai:${user.id}`, 20, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json({ message: 'Rate limit reached. Please wait a minute before sending another message.' }, { status: 429 });
+    }
+
+    const body = await request.json();
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    if (!message || message.length > 2000) {
+      return NextResponse.json({ message: 'Message must be between 1 and 2000 characters.' }, { status: 400 });
+    }
+
+    // 1. Ensure conversation row exists
+    const existingConv = await db
+      .select()
+      .from(aiConversations)
+      .where(eq(aiConversations.userId, user.id))
+      .orderBy(desc(aiConversations.updatedAt))
+      .limit(1);
+
+    let conv = existingConv[0];
+    if (!conv) {
+      const inserted = await db
+        .insert(aiConversations)
+        .values({ userId: user.id, title: 'SAKHI Wellness Companion' })
+        .returning();
+      conv = inserted[0];
+    }
+
+    // 2. Persist user message
+    await db.insert(aiMessages).values({
+      conversationId: conv.id,
+      role: 'user',
+      content: message,
+      safetyFlagged: false,
+    });
+
+    // 3. Deterministic Safety & Red-Flag Interceptor BEFORE AI model invocation
+    const safety = evaluateRedFlags(message);
+    if (safety.triggered) {
+      await logSafetyEvent({ userId: user.id, source: 'ai_chat', evaluation: safety });
+
+      const urgentReply = `**Important Safety Notice (${safety.severity.toUpperCase()})**\n\n${safety.urgentGuidance}\n\n**Emergency Contacts:**\n${safety.helplines
+        .map((h) => `- ${h.label}: ${h.contact}`)
+        .join('\n')}`;
+
+      await db.insert(aiMessages).values({
+        conversationId: conv.id,
+        role: 'assistant',
+        content: urgentReply,
+        safetyFlagged: true,
+        citationsJson: JSON.stringify(['Deterministic Clinical Red-Flag Safety Protocol']),
+      });
+
       return NextResponse.json({
         success: true,
-        data: {
-          message: "⚠️ Urgent Medical Warning: The symptoms you described require prompt medical evaluation. Please contact emergency services (112 or local emergency room) immediately.",
-          urgent: true,
-          sections: [
-            {
-              title: "Emergency Recommendations",
-              content: "Do not wait. If you are experiencing heavy bleeding, severe abdominal pain, chest pain, or breathing difficulty, seek urgent medical care right away."
-            }
-          ],
-          traditionalGuidance: {
-            enabled: false,
-            disclaimer: "Traditional remedies must not be used during acute medical emergencies.",
-            suggestions: []
-          },
-          conversationId
-        }
-      })
+        safetyTriggered: true,
+        safety,
+        reply: urgentReply,
+        citations: ['Deterministic Clinical Red-Flag Safety Protocol'],
+      });
     }
 
-    // 2. Specialized Health Categorization
-    let replyText = ""
-    let sections: { title: string; content: string }[] = []
-    let suggestions: string[] = []
+    // 4. Retrieve authorized PostgreSQL user context & chat history
+    const [context, recentHistory] = await Promise.all([
+      buildAuthorizedUserContext(user.id),
+      db.select().from(aiMessages).where(eq(aiMessages.conversationId, conv.id)).orderBy(desc(aiMessages.createdAt)).limit(10),
+    ]);
 
-    if (/cramp|period|cycle|flow|pms|bleed|pcos/i.test(message)) {
-      replyText = "Menstrual cramps (dysmenorrhea) often result from prostaglandin contractions in the uterine muscles. Here is how you can support your body right now:"
-      sections = [
-        {
-          title: "Immediate Comfort Measures",
-          content: "Apply a warm heating pad across your lower abdomen or lower back. Gentle pelvic tilts, child's pose, and light walking encourage pelvic blood circulation."
-        },
-        {
-          title: "Hydration & Mineral Balance",
-          content: "Ensure adequate magnesium and potassium through warm herbal teas, banana, or soaked pumpkin seeds to help relax smooth muscle tissues."
-        }
-      ]
-      suggestions = [
-        "Warm ginger & ajwain tea to ease uterine spasms",
-        "Abhyanga: gentle sesame oil massage on lower abdomen",
-        "Avoid cold, processed, or excessively spicy foods during flow"
-      ]
-    } else if (/diet|food|eat|nutrition|iron|protein|weight/i.test(message)) {
-      replyText = "Balanced hormonal nutrition relies on steady blood sugar levels, bioavailable micronutrients, and gut health:"
-      sections = [
-        {
-          title: "Hormone-Balancing Plate",
-          content: "Focus on complex grains (millets, oats, brown rice), leafy greens for folate & iron, and quality proteins (sprouts, lentils, paneer, eggs)."
-        },
-        {
-          title: "Micronutrient Synergy",
-          content: "Pair non-heme plant iron (spinach, beetroot) with Vitamin C (lemon juice, amla) for enhanced absorption. Keep caffeine 1 hour away from main meals."
-        }
-      ]
-      suggestions = [
-        "Amla (Indian gooseberry) juice in the morning for vitamin C",
-        "Soaked fenugreek (methi) seeds for insulin sensitivity",
-        "Warm golden turmeric milk with a pinch of black pepper before bedtime"
-      ]
-    } else if (/stress|anxiety|sleep|insomnia|tired|fatigue/i.test(message)) {
-      replyText = "Chronic fatigue and stress disrupt the hypothalamic-pituitary-adrenal (HPA) axis, directly impacting progesterone and cycle regularity:"
-      sections = [
-        {
-          title: "Nervous System Reset",
-          content: "Practice 4-7-8 breathing: Inhale quietly for 4 seconds, hold for 7 seconds, exhale completely through the mouth for 8 seconds. Repeat 4 cycles."
-        },
-        {
-          title: "Sleep Architecture",
-          content: "Keep screens away 45 minutes before sleep. A consistent circadian rhythm stabilizes melatonin and cortisol curves."
-        }
-      ]
-      suggestions = [
-        "Ashwagandha or Brahmi under Ayurvedic guidance for cortisol regulation",
-        "Chamomile or lavender infusion before bed",
-        "Foot massage (Padabhyanga) with warm ghee or sesame oil to calm Vata dosha"
-      ]
-    } else {
-      replyText = "I'm Sakhi, your companion for women's holistic wellness. I can help guide you through menstrual cycle stages, nutrition tips, symptom logging, or understanding blood test markers."
-      sections = [
-        {
-          title: "Personalized Support Areas",
-          content: "You can ask about symptom relief, Ayurvedic daily routines (Dinacharya), menstrual phase planning, or clinical test interpretation."
-        }
-      ]
-      suggestions = [
-        "Warm cumin-coriander-fennel (CCF) water for digestion and hormonal detox",
-        "Daily 15-minute sunlight exposure for Vitamin D and serotonin balance",
-        "Regular cycle tracking in your SAKHI dashboard"
-      ]
-    }
+    const orderedHistory = recentHistory
+      .reverse()
+      .slice(0, -1)
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+    const result = await generateGroundedSakhiResponse({
+      userMessage: message,
+      history: orderedHistory,
+      systemContext: context.systemPrompt,
+      isAnonymous: false,
+    });
+
+    await db.insert(aiMessages).values({
+      conversationId: conv.id,
+      role: 'assistant',
+      content: result.reply,
+      safetyFlagged: false,
+      citationsJson: JSON.stringify(result.citations),
+    });
+
+    await db.update(aiConversations).set({ updatedAt: new Date() }).where(eq(aiConversations.id, conv.id));
 
     return NextResponse.json({
       success: true,
-      data: {
-        message: replyText,
-        urgent: false,
-        sections,
-        traditionalGuidance: {
-          enabled: true,
-          disclaimer: "Ayurvedic recommendations are complementary lifestyle practices and do not replace certified medical treatments.",
-          suggestions
-        },
-        conversationId
-      }
-    })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: "AI response failed" }, { status: 500 })
+      safetyTriggered: false,
+      reply: result.reply,
+      citations: result.citations,
+      modelUsed: result.modelUsed,
+    });
+  } catch (error) {
+    console.error('AI chat error:', error);
+    return NextResponse.json({ message: 'Failed to generate companion response' }, { status: 500 });
   }
 }

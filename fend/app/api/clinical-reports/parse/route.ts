@@ -1,41 +1,64 @@
-import { NextRequest, NextResponse } from "next/server"
-import { parseClinicalReport } from "@/lib/reportParser"
-import { reportsStore } from "@/lib/reportsStore"
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@db/index.ts';
+import { medicalReports } from '@db/schema.ts';
+import { getAuthenticatedUser } from '@/lib/session';
+import { parseClinicalReport } from '@/lib/clinical/reportParser';
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}))
-    const { rawText, sourceLabel, patientContext } = body
+    const user = await getAuthenticatedUser(request);
+    if (!user) return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
 
-    if (!rawText || typeof rawText !== "string") {
-      return NextResponse.json({ message: "rawText is required" }, { status: 400 })
+    const body = await request.json();
+    const rawText = typeof body.text === 'string' ? body.text.trim() : '';
+    if (!rawText) {
+      return NextResponse.json({ message: 'Report text is required' }, { status: 400 });
     }
 
-    const parsedData = parseClinicalReport(rawText, patientContext || {})
-    const createdAt = new Date().toISOString()
-    const reportId = `rep-${Date.now().toString(36)}`
+    const parsed = parseClinicalReport(rawText, {
+      age: typeof body.age === 'number' ? body.age : user.age ?? undefined,
+      pregnant: Boolean(body.pregnant),
+    });
 
-    const newReport = {
-      id: reportId,
-      title: sourceLabel || "Manual Report Entry",
-      createdAt,
-      status: "COMPLETED",
-      fileUrl: "",
-      extractedData: JSON.stringify(parsedData),
+    let savedReport = null;
+    if (body.save !== false) {
+      const title =
+        typeof body.title === 'string' && body.title.trim()
+          ? body.title.trim().slice(0, 140)
+          : `Lab Report (${new Date().toLocaleDateString()})`;
+      const reportDate = body.reportDate ? new Date(body.reportDate) : new Date();
+      const inserted = await db
+        .insert(medicalReports)
+        .values({
+          userId: user.id,
+          title,
+          originalName: 'pasted-report.txt',
+          mimeType: 'text/plain',
+          sizeBytes: Buffer.byteLength(rawText, 'utf8'),
+          parsedText: rawText.slice(0, 20_000),
+          extractedDataJson: JSON.stringify(parsed),
+          uncertaintyFlagsJson: JSON.stringify(parsed.uncertaintyFlags),
+          verifiedByUser: parsed.uncertaintyFlags.length === 0 && parsed.markers.length > 0,
+          status: parsed.markers.length > 0 ? 'parsed' : 'needs_review',
+          reportDate: Number.isNaN(reportDate.getTime()) ? new Date() : reportDate,
+        })
+        .returning();
+      savedReport = inserted[0];
     }
 
-    reportsStore.unshift(newReport)
-
-    return NextResponse.json(
-      {
-        parsedAt: createdAt,
-        stored: true,
-        privacy: "Private",
-        ...parsedData,
-      },
-      { status: 201 }
-    )
-  } catch (err: any) {
-    return NextResponse.json({ message: "Failed to parse clinical report" }, { status: 500 })
+    return NextResponse.json({
+      success: true,
+      parsed,
+      report: savedReport
+        ? {
+            ...savedReport,
+            extractedData: parsed,
+            uncertaintyFlags: parsed.uncertaintyFlags,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error('Report parse error:', error);
+    return NextResponse.json({ message: 'Failed to parse report text' }, { status: 500 });
   }
 }
