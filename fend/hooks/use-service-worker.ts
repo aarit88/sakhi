@@ -4,23 +4,22 @@ import { useEffect } from "react"
 
 export function useServiceWorker() {
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return
 
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((registration) => {
-            if (process.env.NODE_ENV === "development") {
-              console.log("[SAKHI PWA] ServiceWorker registered with scope:", registration.scope)
-            }
-          })
-          .catch((error) => {
-            if (process.env.NODE_ENV === "development") {
-              console.error("[SAKHI PWA] ServiceWorker registration failed:", error)
-            }
-          })
+    if (process.env.NODE_ENV !== "production") {
+      // Prevent stale Next.js dev chunks from being cached by SW
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) {
+          reg.unregister().catch(() => {})
+        }
       })
+      return
     }
+
+    const onLoad = () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {})
+    }
+    window.addEventListener("load", onLoad)
+    return () => window.removeEventListener("load", onLoad)
   }, [])
 }

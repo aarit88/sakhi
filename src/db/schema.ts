@@ -337,6 +337,41 @@ export const accessAuditLogs = pgTable('access_audit_logs', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ─── Module 13: Automated Gmail Reminders for Cycle Dates & Doctor Visits ──────
+export const emailReminderSettings = pgTable('email_reminder_settings', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull()
+    .unique(),
+  enabled: boolean('enabled').default(true).notNull(),
+  recipientEmail: text('recipient_email'),
+  cycleReminderEnabled: boolean('cycle_reminder_enabled').default(true).notNull(),
+  cycleLeadDays: integer('cycle_lead_days').default(3).notNull(),
+  doctorReminderEnabled: boolean('doctor_reminder_enabled').default(true).notNull(),
+  doctorLeadHours: integer('doctor_lead_hours').default(48).notNull(),
+  calendarKeywords: text('calendar_keywords')
+    .default('doctor,gynecologist,ob-gyn,obgyn,clinic,hospital,checkup,ultrasound,blood test,lab,sakhi,consultation,appointment')
+    .notNull(),
+  lastCheckedAt: timestamp('last_checked_at'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const emailReminderLogs = pgTable('email_reminder_logs', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  reminderKey: text('reminder_key').notNull(),
+  reminderType: text('reminder_type').notNull(), // 'cycle' | 'doctor_visit'
+  recipientEmail: text('recipient_email').notNull(),
+  subject: text('subject').notNull(),
+  targetDate: text('target_date').notNull(),
+  gmailMessageId: text('gmail_message_id'),
+  status: text('status').default('sent').notNull(),
+  sentAt: timestamp('sent_at').defaultNow().notNull(),
+});
+
 // ─── Relations ─────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many }) => ({
   consents: many(userConsents),
