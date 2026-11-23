@@ -2,7 +2,7 @@ import { Router } from "express"
 import jwt from "jsonwebtoken"
 import { z } from "zod"
 import prisma from "../prisma"
-import { requireAuth, AuthRequest, getJwtSecret } from "../middleware/authMiddleware"
+import { requireAuth, AuthRequest, extractToken, verifyToken } from "../middleware/authMiddleware"
 import { createSakhiAgentReply } from "../services/sakhiAgent"
 
 const router = Router()
@@ -27,21 +27,17 @@ const chatMessageSchema = z.object({
 // POST /api/anonymous-chat/sessions
 router.post("/sessions", async (req, res) => {
   try {
-    // Optional auth: check cookie first, then Bearer header
-    const authHeader = req.headers.authorization
-    const token = req.cookies?.token || (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null)
-    let userId: string | null = null
-
-    if (token) {
-      try {
-        const decoded: any = jwt.verify(token, getJwtSecret())
-        if (decoded?.userId) {
-          userId = decoded.userId
-        }
-      } catch (tokenErr) {
-        // Invalid or expired token: proceed with anonymous session (userId = null)
-        userId = null
+    // Optional auth: associate session with the verified user if a valid
+    // token is present (cookie or Bearer). Otherwise the session stays anonymous.
+    let userId = null
+    try {
+      const token = extractToken(req)
+      if (token) {
+        const decoded = verifyToken(token)
+        userId = decoded.userId
       }
+    } catch (e) {
+      // Invalid/expired token -> session remains anonymous
     }
 
     const session = await prisma.anonChatSession.create({

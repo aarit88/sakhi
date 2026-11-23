@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { z } from "zod"
 import prisma from "../prisma"
-import { authMiddleware, AuthRequest } from "../middleware/auth"
+import { requireAuth, AuthRequest } from "../middleware/authMiddleware"
 
 const router = Router()
 
@@ -14,7 +14,7 @@ const reminderSchema = z.object({
 })
 
 // POST /api/reminders
-router.post("/", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/", requireAuth, async (req: AuthRequest, res) => {
   try {
     const data = reminderSchema.parse(req.body)
 
@@ -43,7 +43,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
 })
 
 // GET /api/reminders/:userId
-router.get("/:userId", authMiddleware, async (req: AuthRequest, res) => {
+router.get("/:userId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
 
@@ -64,7 +64,7 @@ router.get("/:userId", authMiddleware, async (req: AuthRequest, res) => {
 })
 
 // PUT /api/reminders/:reminderId
-router.put("/:reminderId", authMiddleware, async (req: AuthRequest, res) => {
+router.put("/:reminderId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { reminderId } = req.params
     const bodySchema = reminderSchema.partial()
@@ -98,7 +98,7 @@ router.put("/:reminderId", authMiddleware, async (req: AuthRequest, res) => {
 })
 
 // DELETE /api/reminders/:reminderId
-router.delete("/:reminderId", authMiddleware, async (req: AuthRequest, res) => {
+router.delete("/:reminderId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { reminderId } = req.params
 

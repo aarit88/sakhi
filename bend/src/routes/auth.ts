@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken"
 import { z } from "zod"
 import prisma from "../prisma"
 import dotenv from "dotenv"
-import { getJwtSecret } from "../middleware/authMiddleware"
+import { verifyToken, extractToken } from "../middleware/authMiddleware"
 
 dotenv.config()
 
@@ -44,7 +44,7 @@ const registerHandler = async (req: any, res: any) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      getJwtSecret(),
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     )
 
@@ -65,7 +65,7 @@ const registerHandler = async (req: any, res: any) => {
     console.error(err)
     res.status(500).json({ message: "Internal server error" })
   }
-}
+})
 
 router.post("/signup", registerHandler)
 router.post("/register", registerHandler)
@@ -77,6 +77,7 @@ router.post("/login", async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { email: data.email }
     })
+
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" })
     }
@@ -88,7 +89,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      getJwtSecret(),
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     )
 
@@ -122,13 +123,10 @@ router.post("/logout", (req, res) => {
 
 router.get("/me", async (req: any, res: any) => {
   try {
-    let token = req.cookies?.token
-    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
-      token = req.headers.authorization.split(" ")[1]
-    }
+    const token = extractToken(req)
     if (!token) return res.status(401).json({ message: "Not authenticated" })
 
-    const decoded: any = jwt.verify(token, getJwtSecret())
+    const decoded = verifyToken(token)
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     })

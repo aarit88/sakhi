@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { z } from "zod"
 import prisma from "../prisma"
-import { authMiddleware, AuthRequest } from "../middleware/auth"
+import { requireAuth, AuthRequest } from "../middleware/authMiddleware"
 
 const router = Router()
 
@@ -15,7 +15,7 @@ const periodLogSchema = z.object({
 })
 
 // POST /api/period-tracking/log
-router.post("/log", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/log", requireAuth, async (req: AuthRequest, res) => {
   try {
     const data = periodLogSchema.parse(req.body)
 
@@ -45,7 +45,7 @@ router.post("/log", authMiddleware, async (req: AuthRequest, res) => {
 })
 
 // GET /api/period-tracking/history/:userId
-router.get("/history/:userId", authMiddleware, async (req: AuthRequest, res) => {
+router.get("/history/:userId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
 
@@ -67,7 +67,7 @@ router.get("/history/:userId", authMiddleware, async (req: AuthRequest, res) => 
 
 // Simple prediction: average cycle length
 // GET /api/period-tracking/prediction/:userId
-router.get("/prediction/:userId", authMiddleware, async (req: AuthRequest, res) => {
+router.get("/prediction/:userId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
 
@@ -112,7 +112,7 @@ router.get("/prediction/:userId", authMiddleware, async (req: AuthRequest, res) 
 })
 
 // PUT /api/period-tracking/:logId
-router.put("/:logId", authMiddleware, async (req: AuthRequest, res) => {
+router.put("/:logId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { logId } = req.params
     const bodySchema = periodLogSchema.partial()
@@ -147,7 +147,7 @@ router.put("/:logId", authMiddleware, async (req: AuthRequest, res) => {
 })
 
 // DELETE /api/period-tracking/:logId
-router.delete("/:logId", authMiddleware, async (req: AuthRequest, res) => {
+router.delete("/:logId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { logId } = req.params
 

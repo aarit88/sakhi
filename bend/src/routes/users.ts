@@ -4,8 +4,7 @@ import jwt from "jsonwebtoken"
 import { z } from "zod"
 import prisma from "../prisma"
 import dotenv from "dotenv"
-import { authMiddleware, AuthRequest } from "../middleware/auth"
-import { getJwtSecret } from "../middleware/authMiddleware"
+import { requireAuth, AuthRequest } from "../middleware/authMiddleware"
 
 dotenv.config()
 
@@ -101,7 +100,7 @@ router.post("/login", async (req, res) => {
 })
 
 // GET /api/users/profile/:userId
-router.get("/profile/:userId", authMiddleware, async (req: AuthRequest, res) => {
+router.get("/profile/:userId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
 
@@ -125,7 +124,7 @@ router.get("/profile/:userId", authMiddleware, async (req: AuthRequest, res) => 
 })
 
 // PUT /api/users/profile/:userId
-router.put("/profile/:userId", authMiddleware, async (req: AuthRequest, res) => {
+router.put("/profile/:userId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.params
     const bodySchema = z.object({

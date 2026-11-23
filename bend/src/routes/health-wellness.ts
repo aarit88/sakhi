@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { z } from "zod"
 import prisma from "../prisma"
-import { authMiddleware, requireAdmin, AuthRequest } from "../middleware/auth"
+import { requireAuth, requireAdmin, AuthRequest } from "../middleware/authMiddleware"
 
 const router = Router()
 
@@ -42,7 +42,7 @@ router.get("/articles/:articleId", async (req, res) => {
 })
 
 // POST /api/health-wellness/articles (admin)
-router.post("/articles", authMiddleware, requireAdmin, async (req: AuthRequest, res) => {
+router.post("/articles", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const data = articleSchema.parse(req.body)
 

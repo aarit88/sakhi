@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { z } from "zod"
 import prisma from "../prisma"
-import { authMiddleware, AuthRequest } from "../middleware/auth"
+import { requireAuth, AuthRequest } from "../middleware/authMiddleware"
 
 const router = Router()
 
@@ -17,7 +17,7 @@ const commentSchema = z.object({
 })
 
 // POST /api/community/posts
-router.post("/posts", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/posts", requireAuth, async (req: AuthRequest, res) => {
   try {
     const data = postSchema.parse(req.body)
 
@@ -80,7 +80,7 @@ router.get("/posts/:postId", async (req, res) => {
 })
 
 // POST /api/community/comments
-router.post("/comments", authMiddleware, async (req: AuthRequest, res) => {
+router.post("/comments", requireAuth, async (req: AuthRequest, res) => {
   try {
     const data = commentSchema.parse(req.body)
 
@@ -103,7 +103,7 @@ router.post("/comments", authMiddleware, async (req: AuthRequest, res) => {
 })
 
 // DELETE /api/community/posts/:postId
-router.delete("/posts/:postId", authMiddleware, async (req: AuthRequest, res) => {
+router.delete("/posts/:postId", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { postId } = req.params
 
