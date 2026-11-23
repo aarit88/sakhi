@@ -15,6 +15,8 @@ import clinicalReportsRouter from "./routes/clinical-reports"
 import healthRouter from "./routes/health"
 import aiRouter from "./routes/ai"
 import visualContentRouter from "./routes/visual-content"
+import dietRouter from "./routes/diet"
+import analyticsRouter from "./routes/analytics"
 import { createRateLimiter, securityHeaders } from "./middleware/security"
 
 dotenv.config()
@@ -71,6 +73,8 @@ app.use("/api/anonymous-chat", anonymousChatRouter)
 app.use("/api/clinical-reports", clinicalReportsRouter)
 app.use("/api/ai", aiRouter)
 app.use("/api/visual-content", visualContentRouter)
+app.use("/api/diet", dietRouter)
+app.use("/api/analytics", analyticsRouter)
 
 app.use((_req, res) => {
   res.status(404).json({ message: "Route not found" })

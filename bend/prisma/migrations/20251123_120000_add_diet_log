@@ -1,0 +1,28 @@
+-- +go
+CREATE TABLE "DietLog" (
+    "id" SERIAL NOT NULL,
+    "userId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "mealName" TEXT,
+    "calories" INTEGER,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DietLog_pkey" PRIMARY KEY ("id")
+);
+
+-- +go
+CREATE INDEX "DietLog_userId_idx" ON "DietLog"("userId");
+
+-- +go
+ALTER TABLE "DietLog" ADD CONSTRAINT "DietLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE;
+
+-- +down
+DROP INDEX IF EXISTS "DietLog_userId_idx";
+
+-- +down
+ALTER TABLE "DietLog" DROP CONSTRAINT "DietLog_userId_fkey";
+
+-- +down
+DROP TABLE IF EXISTS "DietLog";

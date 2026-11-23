@@ -44,7 +44,7 @@ const registerHandler = async (req: any, res: any) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     )
 
@@ -65,7 +65,7 @@ const registerHandler = async (req: any, res: any) => {
     console.error(err)
     res.status(500).json({ message: "Internal server error" })
   }
-})
+}
 
 router.post("/signup", registerHandler)
 router.post("/register", registerHandler)
@@ -89,7 +89,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     )
 

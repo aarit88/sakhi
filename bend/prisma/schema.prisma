@@ -38,6 +38,7 @@ model User {
   sleepLogs     SleepLog[]
   hydrationLogs HydrationLog[]
   activityLogs  ActivityLog[]
+  dietLogs      DietLog[]
   medicalReports MedicalReport[]
   aiConversations AIConversation[]
   anonChatSessions AnonChatSession[]
@@ -185,6 +186,17 @@ model ActivityLog {
   date      DateTime
   steps     Int
   calories  Int
+  createdAt DateTime @default(now())
+}
+
+model DietLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  date      DateTime
+  mealName  String
+  calories  Int?
+  notes     String?
   createdAt DateTime @default(now())
 }
 
